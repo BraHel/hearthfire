@@ -25,6 +25,7 @@ describe('MinorArcanaCard unlock — default count', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -39,6 +40,7 @@ describe('MinorArcanaCard unlock — default count', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -58,6 +60,7 @@ describe('MinorArcanaCard unlock — requirementsUnlockAt', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -72,6 +75,7 @@ describe('MinorArcanaCard unlock — requirementsUnlockAt', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -94,6 +98,7 @@ describe('MinorArcanaCard unlock — unlockGroups', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -108,6 +113,7 @@ describe('MinorArcanaCard unlock — unlockGroups', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -123,6 +129,7 @@ describe('MinorArcanaCard unlock — unlockGroups', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -137,6 +144,7 @@ describe('MinorArcanaCard unlock — unlockGroups', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -159,6 +167,7 @@ describe('MinorArcanaCard requirementsDivider', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -173,6 +182,7 @@ describe('MinorArcanaCard requirementsDivider', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -193,6 +203,7 @@ describe('MinorArcanaCard requirementsDivider', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -214,6 +225,7 @@ describe('MinorArcanaCard requirementsNote', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -233,6 +245,7 @@ describe('MinorArcanaCard requirementsNote', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -260,6 +273,7 @@ describe('MinorArcanaCard requirementRepeats', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -278,6 +292,7 @@ describe('MinorArcanaCard requirementRepeats', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -298,6 +313,7 @@ describe('MinorArcanaCard requirementRepeats', () => {
         onToggleRequirement={noop}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );
@@ -313,6 +329,7 @@ describe('MinorArcanaCard requirementRepeats', () => {
         onToggleRequirement={onToggleRequirement}
         onTrackerChange={noop}
         onFollowerHpChange={noop}
+        onNotesChange={noop}
         onRemove={noop}
       />,
     );

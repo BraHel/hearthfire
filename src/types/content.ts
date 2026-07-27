@@ -194,6 +194,9 @@ export interface ArcanaMove {
   name: string;
   subtitle?: string;
   tracker?: { label: string; max: number };
+  // A freeform textarea rendered under the move text, for moves that ask the player to record
+  // something open-ended (e.g. the names of souls bound to their flesh).
+  notesField?: { label: string };
   text: string;
   follower?: ArcanaFollower;
 }

@@ -1,6 +1,6 @@
-import { Fragment, useCallback } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState, memo } from 'react';
 import clsx from 'clsx';
-import { Checkbox, Text } from '@/components/ui';
+import { Checkbox, Input, Text } from '@/components/ui';
 import { parseMarkdown } from '@/lib/parseMarkdown';
 import type { MinorArcanum } from '@/types';
 import { ArcanaCardHeader } from './ArcanaCardHeader';
@@ -13,20 +13,55 @@ interface MinorArcanaCardProps {
   requirementsChecked: Record<string, boolean>;
   trackerValue?: number;
   followerHp?: number[];
+  notes?: string;
   onToggleRequirement: (key: string, checked: boolean) => void;
   onTrackerChange: (value: number) => void;
   onFollowerHpChange: (index: number, value: number) => void;
+  onNotesChange: (value: string) => void;
   onRemove: () => void;
 }
+
+// A freeform textarea for a move's notesField (e.g. writing down bound souls' names). Optimistic
+// local draft persisted on blur, matching AspectDie/HpInput's pattern for text inputs on array-backed
+// arcana entries — re-syncs only when a genuinely new saved value arrives.
+const NotesField = memo(({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) => {
+  const [draft, setDraft] = useState(value);
+  const lastSaved = useRef(value);
+  useEffect(() => {
+    if (value === lastSaved.current) return;
+    lastSaved.current = value;
+    setDraft(value);
+  }, [value]);
+  const commit = useCallback(
+    (next: string) => {
+      if (next === lastSaved.current) return;
+      lastSaved.current = next;
+      onChange(next);
+    },
+    [onChange],
+  );
+  return (
+    <Input
+      multiline
+      label={label}
+      value={draft}
+      rows={3}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={(e) => commit(e.target.value)}
+    />
+  );
+});
 
 export const MinorArcanaCard = ({
   arcanum,
   requirementsChecked,
   trackerValue,
   followerHp,
+  notes,
   onToggleRequirement,
   onTrackerChange,
   onFollowerHpChange,
+  onNotesChange,
   onRemove,
 }: MinorArcanaCardProps) => {
   // Most requirements render as a single checkbox; requirementRepeats expands the
@@ -122,6 +157,14 @@ export const MinorArcanaCard = ({
           )}
 
           <div className={styles.moveText}>{parseMarkdown(move.text)}</div>
+
+          {move.notesField && (
+            <NotesField
+              label={move.notesField.label}
+              value={notes ?? ''}
+              onChange={onNotesChange}
+            />
+          )}
 
           {move.follower && (
             <ArcanaFollowerBlock
