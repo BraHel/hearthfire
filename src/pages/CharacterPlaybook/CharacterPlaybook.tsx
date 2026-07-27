@@ -428,6 +428,12 @@ const CharacterPlaybookContent = ({ g, id, playbook, updateCharacterName, update
 
   return (
     <CharacterSheet
+      // Forces a full remount on character switch: the route only changes the
+      // `:playbook` param, so React Router reuses this element in place. Without
+      // this key, components with internal state derived from `data` (e.g. the
+      // Inventory RepeaterFields) keep the previous character's state and save
+      // it back under the new character (see #294).
+      key={character.id}
       character={character}
       playbookOption={playbookOption}
       id={id}
