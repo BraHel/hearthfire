@@ -12,13 +12,15 @@ interface MinorArcanaCardRowProps {
   onToggleRequirement: (id: string, key: string, checked: boolean) => void;
   onTrackerChange: (id: string, value: number) => void;
   onFollowerHpChange: (id: string, index: number, value: number) => void;
+  onNotesChange: (id: string, value: string) => void;
   onRemove: (id: string) => void;
 }
 
-const MinorArcanaCardRow = memo(({ entry, arcanum, onToggleRequirement, onTrackerChange, onFollowerHpChange, onRemove }: MinorArcanaCardRowProps) => {
+const MinorArcanaCardRow = memo(({ entry, arcanum, onToggleRequirement, onTrackerChange, onFollowerHpChange, onNotesChange, onRemove }: MinorArcanaCardRowProps) => {
   const handleToggle = useCallback((key: string, checked: boolean) => onToggleRequirement(entry.id, key, checked), [entry.id, onToggleRequirement]);
   const handleTracker = useCallback((value: number) => onTrackerChange(entry.id, value), [entry.id, onTrackerChange]);
   const handleFollowerHp = useCallback((index: number, value: number) => onFollowerHpChange(entry.id, index, value), [entry.id, onFollowerHpChange]);
+  const handleNotes = useCallback((value: string) => onNotesChange(entry.id, value), [entry.id, onNotesChange]);
   const handleRemove = useCallback(() => onRemove(entry.id), [entry.id, onRemove]);
   return (
     <MinorArcanaCard
@@ -26,9 +28,11 @@ const MinorArcanaCardRow = memo(({ entry, arcanum, onToggleRequirement, onTracke
       requirementsChecked={entry.requirementsChecked}
       trackerValue={entry.trackerValue}
       followerHp={entry.followerHp}
+      notes={entry.notes}
       onToggleRequirement={handleToggle}
       onTrackerChange={handleTracker}
       onFollowerHpChange={handleFollowerHp}
+      onNotesChange={handleNotes}
       onRemove={handleRemove}
     />
   );
@@ -89,6 +93,13 @@ export const MinorArcanaPanel = ({ arcanaMinor, arcanaMinorRef, saveMinor }: Min
     [saveMinor],
   );
 
+  const handleMinorNotesChange = useCallback(
+    (id: string, value: string) => {
+      saveMinor(arcanaMinorRef.current.map((a) => (a.id === id ? { ...a, notes: value } : a)));
+    },
+    [saveMinor],
+  );
+
   const handleMinorFollowerHpChange = useCallback(
     (id: string, index: number, value: number) => {
       saveMinor(arcanaMinorRef.current.map((a) => {
@@ -144,6 +155,7 @@ export const MinorArcanaPanel = ({ arcanaMinor, arcanaMinorRef, saveMinor }: Min
                   onToggleRequirement={handleToggleRequirement}
                   onTrackerChange={handleMinorTrackerChange}
                   onFollowerHpChange={handleMinorFollowerHpChange}
+                  onNotesChange={handleMinorNotesChange}
                   onRemove={handleRemoveMinor}
                 />
               );

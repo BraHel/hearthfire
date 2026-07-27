@@ -147,6 +147,7 @@ export interface ArcanaMinorEntry {
   trackerValue?: number;
   followerHp?: number[];
   carried?: boolean;
+  notes?: string;
 }
 
 export interface ArcanaMajorEntry {

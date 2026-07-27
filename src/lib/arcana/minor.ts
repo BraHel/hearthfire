@@ -84,7 +84,8 @@ export const MINOR_ARCANA: MinorArcanum[] = [
       name: "Shell Game of Souls",
       subtitle: "Souls (max CON)",
       tracker: { label: "Souls", max: 3 },
-      text: "When you **touch a dying, intelligent being, speak their name and words of binding**, roll +INT: **on a 10+**, you bind their soul to your flesh; **on a 7-9**, you bind their soul but weaken yours—reduce your max HP by 1d4+1.\n\nYour flesh can bind a number of souls equal to your CON. They manifest in dreams and struggle for control when your mind or body are weak. Write their names here:\n\nWhen you **roll a 6- on Death's Door**, you can release a bound soul to go through the Last Door in your place. If you do, you survive as if you rolled a 7-9. Your body, though, still bears the marks of that which would have killed you.",
+      notesField: { label: "Their names" },
+      text: "When you **touch a dying, intelligent being, speak their name and words of binding**, roll +INT: **on a 10+**, you bind their soul to your flesh; **on a 7-9**, you bind their soul but weaken yours—reduce your max HP by 1d4+1.\n\nYour flesh can bind a number of souls equal to your CON. They manifest in dreams and struggle for control when your mind or body are weak.\n\nWhen you **roll a 6- on Death's Door**, you can release a bound soul to go through the Last Door in your place. If you do, you survive as if you rolled a 7-9. Your body, though, still bears the marks of that which would have killed you.",
     },
   },
   {
