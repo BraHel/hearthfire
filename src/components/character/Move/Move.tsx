@@ -156,11 +156,18 @@ export const Move = ({
   // (starting/granted) counts as always-on. Display-only moves omit the controls entirely.
   const interactiveDisabled = !readOnly && !selected;
 
+  // A move with no selection control is one the character simply has (basic, special, follower,
+  // expedition, homefront, custom, insert-granted): nothing gates it, so it stays roll-active even
+  // though `interactiveDisabled` reads true for it. The exception is a locked arcana grant, which is
+  // display-only precisely because its threshold isn't met yet. Selectable moves are unchanged: no
+  // roll button until chosen.
+  const rollActive = selection === undefined ? !locked : !interactiveDisabled;
+
   // Roll affordance: self-served from the character-sheet context (present on every character tab, absent
   // in the GM move search / bare tests). Shown only on an active move whose prose parses to a stat roll —
   // so the same shared Move offers rolling everywhere it appears, with no per-caller wiring.
   const rollContext = useCharacterRollOptional();
-  const parsedRoll = rollContext && !interactiveDisabled ? parseMoveRoll(move) : null;
+  const parsedRoll = rollContext && rollActive ? parseMoveRoll(move) : null;
   const rollResolved = parsedRoll ? resolveRollStat(parsedRoll.stat, rollContext!.data) : null;
 
   const citationText = citation ?? move.citation;
