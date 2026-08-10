@@ -131,6 +131,9 @@ export interface ArcanaFollower {
   // A follower tracked by Loyalty rather than HP (e.g. the Demonhide Cloak) renders an interactive
   // dot tracker with this many dots; its value persists on the entry under trackerValues[entry id].
   loyalty?: number;
+  // Loyalty the follower already holds when it's first gained (e.g. the andalau "holds 1 Loyalty to
+  // start"). Omitted for the followers that start empty.
+  loyaltyStart?: number;
   // A follower whose stats are rolled each time it's summoned (the Ring of Daagon's Servant of Daagon):
   // the player assigns a d4 to each aspect row and ticks the chosen Traits/Moves. Aspect write-in
   // values persist under entry.bodyInputs[followerId][rowId]; option checks under
@@ -194,6 +197,12 @@ export interface ArcanaMove {
   name: string;
   subtitle?: string;
   tracker?: { label: string; max: number };
+  // A set of named states the move tells the player to mark and clear (e.g. Sublime Words' raspy
+  // voice / coughing fits / mute, the Bittersweet Elixir's youthful / mature / elderly). Each is
+  // independently checkable — the book's ordering is severity, not a required sequence, and a player
+  // starts by marking their *current* age — so these are checkboxes rather than a dot track. Marked
+  // state persists on the entry under statusChecks.
+  statuses?: { label: string; items: { id: string; label: string }[] };
   // A freeform textarea rendered under the move text, for moves that ask the player to record
   // something open-ended (e.g. the names of souls bound to their flesh).
   notesField?: { label: string };
@@ -225,6 +234,11 @@ export interface MinorArcanum {
   requirementRepeats?: Record<number, number>;
   // A caveat/consequence sentence shown below the checkbox list — not a task to check off.
   requirementsNote?: string;
+  // A few arcana earn their unlock by marking circles on a roll (e.g. the cracked flute's "on a 10+,
+  // mark 1 circle") rather than by ticking off discrete tasks. When present, the card renders a dot
+  // tracker instead of the requirement checkboxes — the `requirements` strings become plain prose —
+  // and the move unlocks at `max` marks. Mirrors the major arcana's role:"marks" front tracker.
+  marksTracker?: { label: string; max: number };
   move: ArcanaMove;
 }
 

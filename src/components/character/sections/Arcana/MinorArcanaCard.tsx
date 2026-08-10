@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, useState, memo } from 'react';
 import clsx from 'clsx';
-import { Checkbox, Input, Text } from '@/components/ui';
+import { Checkbox, CheckboxGroup, Input, Text } from '@/components/ui';
 import { parseMarkdown } from '@/lib/parseMarkdown';
 import type { MinorArcanum } from '@/types';
 import { ArcanaCardHeader } from './ArcanaCardHeader';
@@ -11,12 +11,18 @@ import styles from './MinorArcanaCard.module.css';
 interface MinorArcanaCardProps {
   arcanum: MinorArcanum;
   requirementsChecked: Record<string, boolean>;
+  marksValue?: number;
   trackerValue?: number;
+  statusChecks?: Record<string, boolean>;
   followerHp?: number[];
+  followerLoyalty?: number;
   notes?: string;
   onToggleRequirement: (key: string, checked: boolean) => void;
+  onMarksChange: (value: number) => void;
   onTrackerChange: (value: number) => void;
+  onStatusChange: (id: string, checked: boolean) => void;
   onFollowerHpChange: (index: number, value: number) => void;
+  onFollowerLoyaltyChange: (value: number) => void;
   onNotesChange: (value: string) => void;
   onRemove: () => void;
 }
@@ -55,12 +61,18 @@ const NotesField = memo(({ label, value, onChange }: { label: string; value: str
 export const MinorArcanaCard = ({
   arcanum,
   requirementsChecked,
+  marksValue,
   trackerValue,
+  statusChecks,
   followerHp,
+  followerLoyalty,
   notes,
   onToggleRequirement,
+  onMarksChange,
   onTrackerChange,
+  onStatusChange,
   onFollowerHpChange,
+  onFollowerLoyaltyChange,
   onNotesChange,
   onRemove,
 }: MinorArcanaCardProps) => {
@@ -72,12 +84,21 @@ export const MinorArcanaCard = ({
     return Array.from({ length: repeat }, (_, n) => `req${i}` + (repeat > 1 ? `-${n}` : ''));
   });
   const reqKeys = reqSlotKeys.flat();
-  const isUnlocked = arcanum.unlockGroups
-    ? arcanum.unlockGroups.some((group) =>
-        group.every((i) => reqSlotKeys[i].every((key) => !!requirementsChecked?.[key])),
-      )
-    : reqKeys.filter((k) => requirementsChecked?.[k]).length >=
-      (arcanum.requirementsUnlockAt ?? reqKeys.length);
+  const marksTracker = arcanum.marksTracker;
+  // Three unlock styles, in precedence order: marked circles (marksTracker), any one satisfied
+  // alternative (unlockGroups), or a plain count of checked requirement boxes.
+  const isMarksUnlocked = (marksValue ?? 0) >= (marksTracker?.max ?? 0);
+  const isGroupUnlocked = !!arcanum.unlockGroups?.some((group) =>
+    group.every((i) => reqSlotKeys[i].every((key) => !!requirementsChecked?.[key])),
+  );
+  const isCountUnlocked =
+    reqKeys.filter((k) => requirementsChecked?.[k]).length >=
+    (arcanum.requirementsUnlockAt ?? reqKeys.length);
+  const isUnlocked = marksTracker
+    ? isMarksUnlocked
+    : arcanum.unlockGroups
+      ? isGroupUnlocked
+      : isCountUnlocked;
 
   const makeToggle = useCallback(
     (key: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,29 +125,47 @@ export const MinorArcanaCard = ({
       </div>
 
       <div className={styles.requirements}>
-        {reqSlotKeys.map((slotKeys, i) => (
-          <Fragment key={`req${i}`}>
-            {arcanum.requirementsDivider?.index === i && (
-              <Text as="span" font="serif" italic color="muted">
-                {arcanum.requirementsDivider.text}
+        {marksTracker ? (
+          <>
+            <ArcanaTrackerRow
+              label={marksTracker.label}
+              total={marksTracker.max}
+              checked={marksValue ?? 0}
+              onChange={onMarksChange}
+            />
+            {/* The dots are the only control here — these lines describe what marking all the
+                circles earns you, so they render as prose rather than as tickable tasks. */}
+            {arcanum.requirements.map((requirement, i) => (
+              <Text key={`req${i}-${requirement}`} font="serif">
+                {requirement}
               </Text>
-            )}
-            <label className={styles.reqRow}>
-              <span className={styles.reqBoxes}>
-                {slotKeys.map((key) => (
-                  <Checkbox
-                    key={key}
-                    checked={!!requirementsChecked?.[key]}
-                    onChange={makeToggle(key)}
-                  />
-                ))}
-              </span>
-              <Text as="span" font="serif">
-                {arcanum.requirements[i]}
-              </Text>
-            </label>
-          </Fragment>
-        ))}
+            ))}
+          </>
+        ) : (
+          reqSlotKeys.map((slotKeys, i) => (
+            <Fragment key={`req${i}`}>
+              {arcanum.requirementsDivider?.index === i && (
+                <Text as="span" font="serif" italic color="muted">
+                  {arcanum.requirementsDivider.text}
+                </Text>
+              )}
+              <label className={styles.reqRow}>
+                <span className={styles.reqBoxes}>
+                  {slotKeys.map((key) => (
+                    <Checkbox
+                      key={key}
+                      checked={!!requirementsChecked?.[key]}
+                      onChange={makeToggle(key)}
+                    />
+                  ))}
+                </span>
+                <Text as="span" font="serif">
+                  {arcanum.requirements[i]}
+                </Text>
+              </label>
+            </Fragment>
+          ))
+        )}
         {arcanum.requirementsNote && (
           <div className={styles.requirementsNote}>
             {parseMarkdown(arcanum.requirementsNote)}
@@ -156,6 +195,16 @@ export const MinorArcanaCard = ({
             />
           )}
 
+          {move.statuses && (
+            <CheckboxGroup
+              label={move.statuses.label}
+              items={move.statuses.items}
+              checked={statusChecks ?? {}}
+              onChange={onStatusChange}
+              columns={2}
+            />
+          )}
+
           <div className={styles.moveText}>{parseMarkdown(move.text)}</div>
 
           {move.notesField && (
@@ -172,6 +221,8 @@ export const MinorArcanaCard = ({
               follower={move.follower}
               followerHp={followerHp}
               onFollowerHpChange={onFollowerHpChange}
+              loyaltyValue={followerLoyalty}
+              onLoyaltyChange={onFollowerLoyaltyChange}
             />
           )}
         </div>
