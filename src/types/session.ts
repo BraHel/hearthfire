@@ -89,6 +89,9 @@ export interface LoggedRoll {
   characterName: string;
   moveName: string;
   stat: RollStat;
+  // The non-stat resource the roll was against (+Favor, +Prosperity, …), when there was one. Without it
+  // the log can't say what the modifier stood for.
+  resource?: string;
   dice: number[];
   mod: number;
   total: number;

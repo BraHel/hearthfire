@@ -82,4 +82,16 @@ describe('Move roll affordance gating', () => {
     render(<Move title={rollableMove.name} move={rollableMove} />);
     expect(screen.queryByLabelText('Roll +WIS')).not.toBeInTheDocument();
   });
+
+  // A move rolling against something the sheet can't read still gets a button — it rolls from 0 and the
+  // player dials the resource in on the stepper.
+  it('labels a resource roll by its resource', () => {
+    const resourceMove: MoveDefinition = {
+      id: 'test-resource',
+      name: 'Test Resource',
+      body: [{ kind: 'para', text: 'When you sell a special item, roll +Prosperity: on a 10+, great.' }],
+    };
+    renderInSheet(<Move title={resourceMove.name} move={resourceMove} />);
+    expect(screen.getByLabelText('Roll +Prosperity')).toBeInTheDocument();
+  });
 });

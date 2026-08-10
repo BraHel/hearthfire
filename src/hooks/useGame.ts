@@ -289,6 +289,7 @@ const parseDiceRolls = (raw: unknown): LoggedRoll[] | undefined => {
       characterName: isString(r.characterName) ? r.characterName : '',
       moveName: isString(r.moveName) ? r.moveName : '',
       stat: r.stat as RollStat,
+      ...(isString(r.resource) ? { resource: r.resource } : {}),
       dice: r.dice as number[],
       mod: r.mod,
       total: r.total,

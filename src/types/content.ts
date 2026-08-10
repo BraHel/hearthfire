@@ -61,9 +61,9 @@ export interface MoveDefinition {
   excludes?: string[];
 }
 
-// A PbtA action roll parsed from a move's prose (2d6 + stat, or +nothing for a bare 2d6). The tail of
-// non-PC-stat modifiers in the book (+favor, +defenses, …) is deliberately excluded — those read a
-// resource the character sheet doesn't hold, so no roll button is offered for them.
+// A PbtA action roll parsed from a move's prose (2d6 + stat, or +nothing for a bare 2d6). Rolls against
+// a non-PC-stat resource (+Favor, +Defenses, …) carry `nothing` here and name the resource in
+// `MoveRoll.resource` — the sheet can't read those values, so the player dials them in by hand.
 export type RollStat = 'STR' | 'DEX' | 'INT' | 'WIS' | 'CON' | 'CHA' | 'nothing';
 
 // One outcome band shown for a parsed roll (display only — highlights which result you hit; never gates
@@ -74,10 +74,13 @@ export interface RollBand {
   max: number | null;
 }
 
-// The result of parsing a move for a rollable action. null when no confident PC-stat roll is found.
+// The result of parsing a move for a rollable action. null when the prose names no roll at all.
 export interface MoveRoll {
   stat: RollStat;
   bands: RollBand[];
+  // The resource rolled against when it isn't a PC stat, as written in the prose ('Favor', 'Fortunes',
+  // 'STAT', …). Undefined for stat rolls and bare `+nothing` rolls.
+  resource?: string;
 }
 
 export interface RadioOption {

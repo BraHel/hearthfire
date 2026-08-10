@@ -48,6 +48,13 @@ describe('RollLog', () => {
     expect(screen.getByText('Move B', { exact: false }).textContent).not.toContain('+');
   });
 
+  // A resource roll carries `stat: 'nothing'`, so without the resource the log would say only the move
+  // name and leave the GM guessing what the modifier stood for.
+  it('names the resource a roll was against', () => {
+    render(<RollLog rolls={[roll({ stat: 'nothing', resource: 'Prosperity', moveName: 'Trade & Barter' })]} />);
+    expect(screen.getByText(/Trade & Barter \+Prosperity/)).toBeInTheDocument();
+  });
+
   it('marks advantage and disadvantage rolls', () => {
     const { rerender } = render(<RollLog rolls={[roll({ mode: 'adv' })]} />);
     expect(screen.getByText(/\(adv\)/)).toBeInTheDocument();
