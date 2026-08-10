@@ -13,21 +13,32 @@ export interface RollResult {
 
 const d6 = (): number => Math.floor(Math.random() * 6) + 1;
 
-// A Stonetop action roll: 2d6 + mod normally; advantage rolls 3d6 and drops the lowest, disadvantage
-// drops the highest (Book 1, p.230). The caller resolves advantage/disadvantage before calling — here we
-// only execute the chosen mode.
-export const rollAction = (mod: number, mode: RollMode): RollResult => {
-  if (mode === 'normal') {
-    const dice = [d6(), d6()];
-    return { dice, dropped: null, mod, total: dice[0] + dice[1] + mod, mode };
-  }
+// Read a set of already-rolled dice under a mode. Normal is a plain 2d6; advantage keeps the two highest
+// (drop lowest), disadvantage keeps the two lowest (drop highest).
+const resolve = (dice: number[], mod: number, mode: RollMode): RollResult => {
+  if (mode === 'normal') return { dice, dropped: null, mod, total: dice[0] + dice[1] + mod, mode };
 
-  const dice = [d6(), d6(), d6()];
-  // Advantage keeps the two highest (drop lowest); disadvantage keeps the two lowest (drop highest).
   const dropValue = mode === 'adv' ? Math.min(...dice) : Math.max(...dice);
   const dropped = dice.indexOf(dropValue);
   const kept = dice.filter((_, i) => i !== dropped);
   return { dice, dropped, mod, total: kept[0] + kept[1] + mod, mode };
+};
+
+// A Stonetop action roll: 2d6 + mod normally; advantage rolls 3d6 and drops the lowest, disadvantage
+// drops the highest (Book 1, p.230). The caller resolves advantage/disadvantage before calling — here we
+// only execute the chosen mode.
+export const rollAction = (mod: number, mode: RollMode): RollResult =>
+  resolve(mode === 'normal' ? [d6(), d6()] : [d6(), d6(), d6()], mod, mode);
+
+// Re-read a roll that's already on the table under a different mode, rather than re-rolling it — the
+// player usually learns they had advantage *after* the dice land, and those dice shouldn't be lost.
+// Advantage/disadvantage need a third die: `spare` is one this roll produced earlier and set aside, so
+// flipping modes back and forth re-reads the same die instead of fishing for a better one. Going back to
+// normal returns the first two dice; the third becomes the caller's spare.
+export const remodeRoll = (prev: RollResult, mode: RollMode, spare: number | null): RollResult => {
+  const [first, second] = prev.dice;
+  if (mode === 'normal') return resolve([first, second], prev.mod, mode);
+  return resolve([first, second, prev.dice[2] ?? spare ?? d6()], prev.mod, mode);
 };
 
 // Map a stat string ("-1".."3", "-", or blank) to its integer modifier, defaulting to 0. Mirrors the

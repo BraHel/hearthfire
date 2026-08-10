@@ -291,6 +291,7 @@ const parseDiceRolls = (raw: unknown): LoggedRoll[] | undefined => {
       stat: r.stat as RollStat,
       ...(isString(r.resource) ? { resource: r.resource } : {}),
       dice: r.dice as number[],
+      ...(isNumber(r.dropped) ? { dropped: r.dropped } : {}),
       mod: r.mod,
       total: r.total,
       mode: r.mode as LoggedRoll['mode'],
