@@ -9,7 +9,7 @@ vi.mock('firebase/firestore', () => firestoreMockModule());
 vi.mock('@/components/app/Toast/ToastContext', () => toastModuleMock());
 
 import { useGame } from '../useGame';
-import type { Character } from '@/types';
+import type { Character, LoggedRoll } from '@/types';
 
 const GAME_PATH = 'games/g1';
 
@@ -18,6 +18,21 @@ const char = (id: string, overrides: Partial<Character> = {}): Character => ({
   name: `Char ${id}`,
   playbook: 'heavy',
   level: 1,
+  ...overrides,
+});
+
+const roll = (id: string, overrides: Partial<LoggedRoll> = {}): LoggedRoll => ({
+  id,
+  characterId: 'a',
+  characterName: 'Char a',
+  moveName: 'Move A',
+  stat: 'WIS',
+  dice: [4, 3],
+  mod: 1,
+  total: 8,
+  mode: 'normal',
+  band: '7-9',
+  createdAt: 1,
   ...overrides,
 });
 
@@ -504,5 +519,86 @@ describe('useGame mutations', () => {
     expect(steading.debilities).toEqual({ diminished: false });
     expect('lacking' in steading.debilities!).toBe(false);
     expect('malcontent' in steading.debilities!).toBe(false);
+  });
+
+  it('logRoll round-trips the resource a roll was made against (#302)', async () => {
+    firestoreStore.set(GAME_PATH, { name: '', createdAt: 0, characters: [char('a')] });
+    const { result } = renderGame();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    // A resource roll carries stat 'nothing', so the resource name is the only thing that tells
+    // the shared log what the modifier stood for — it has to survive the write and the read back.
+    await act(async () => {
+      await result.current.logRoll(roll('r1', { stat: 'nothing', resource: 'Prosperity', mod: 2 }));
+    });
+
+    await waitFor(() => expect(result.current.game?.diceRolls).toHaveLength(1));
+    expect(result.current.game!.diceRolls![0]).toMatchObject({ stat: 'nothing', resource: 'Prosperity' });
+  });
+
+  it('logRoll omits `resource` entirely for a stat roll rather than writing undefined (#302)', async () => {
+    firestoreStore.set(GAME_PATH, { name: '', createdAt: 0, characters: [char('a')] });
+    const { result } = renderGame();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    // CharacterPlaybook always maps `resource: report.resource`, which is undefined for a stat
+    // roll — real Firestore rejects the whole write if that key survives to the payload.
+    await act(async () => {
+      await result.current.logRoll({ ...roll('r1'), resource: undefined });
+    });
+
+    const stored = firestoreStore.get(GAME_PATH)!.diceRolls as Record<string, unknown>[];
+    expect('resource' in stored[0]).toBe(false);
+    expect(result.current.game!.diceRolls![0].resource).toBeUndefined();
+  });
+
+  it('logRoll keeps a roll another player logged concurrently, oldest-first', async () => {
+    firestoreStore.set(GAME_PATH, { name: '', createdAt: 0, characters: [char('a')] });
+    const { result } = renderGame();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    // Another client's roll lands in the doc after this client's snapshot was taken.
+    firestoreStore.set(GAME_PATH, {
+      name: '', createdAt: 0, characters: [char('a')],
+      diceRolls: [roll('theirs', { createdAt: 5 })],
+    });
+
+    await act(async () => { await result.current.logRoll(roll('mine', { createdAt: 9 })); });
+
+    const stored = firestoreStore.get(GAME_PATH)!.diceRolls as LoggedRoll[];
+    expect(stored.map((r) => r.id)).toEqual(['theirs', 'mine']);
+  });
+
+  it('logRoll trims the oldest rolls once the log is full', async () => {
+    const full = Array.from({ length: 50 }, (_, i) => roll(`r${i}`, { createdAt: i }));
+    firestoreStore.set(GAME_PATH, { name: '', createdAt: 0, characters: [char('a')], diceRolls: full });
+    const { result } = renderGame();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(async () => { await result.current.logRoll(roll('newest', { createdAt: 99 })); });
+
+    const stored = firestoreStore.get(GAME_PATH)!.diceRolls as LoggedRoll[];
+    expect(stored).toHaveLength(50);
+    expect(stored[0].id).toBe('r1');
+    expect(stored[49].id).toBe('newest');
+  });
+
+  it('drops a malformed persisted roll instead of failing the whole game parse', async () => {
+    firestoreStore.set(GAME_PATH, {
+      name: '', createdAt: 0, characters: [char('a')],
+      diceRolls: [
+        roll('good'),
+        { ...roll('bad-stat'), stat: 'LUCK' },
+        { ...roll('bad-dice'), dice: ['four'] },
+        // A resource that isn't a string is ignored rather than rendered as "+42".
+        { ...roll('bad-resource'), stat: 'nothing', resource: 42 },
+      ],
+    });
+    const { result } = renderGame();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const rolls = result.current.game!.diceRolls!;
+    expect(rolls.map((r) => r.id)).toEqual(['good', 'bad-resource']);
+    expect(rolls[1].resource).toBeUndefined();
   });
 });

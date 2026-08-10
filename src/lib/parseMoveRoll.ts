@@ -1,11 +1,14 @@
 import type { MoveDefinition, MoveRoll, RollBand, RollStat } from '@/types';
 import { STAT_ABBRS } from './constants';
 
-// The six PC stats plus `+nothing` (a bare 2d6). Anything else after "roll +" in the book prose
-// (+favor, +population, +defenses, +stat, …) reads a resource the character sheet doesn't hold, so we
-// leave it unmatched and render no button — the parser fails closed rather than guess. The stat
-// alternation is derived from the shared STATS table so it can't drift from the rest of the app.
-const ROLL_STAT_RE = new RegExp(`\\broll \\+(${[...STAT_ABBRS, 'nothing'].join('|')})\\b`, 'i');
+// Whatever the prose says to roll against: one of the six PC stats, `nothing` (a bare 2d6), or a
+// resource the character sheet doesn't hold (+Favor, +Population, +Defenses, +STAT, …). The sheet can't
+// resolve that last group, so those roll from 0 and the player dials the value in on the affordance's
+// adjustment stepper — which is also how "add +1 for this, -1 for that" prose gets applied.
+const ROLL_TARGET_RE = /\broll \+([a-z]+)\b/i;
+
+// The stat alternation is derived from the shared STATS table so it can't drift from the rest of the app.
+const STAT_TARGETS = new Set<string>(STAT_ABBRS);
 
 // Outcome bands as written in the prose, with or without the surrounding `**` bold markers (blessed.ts
 // bolds them, special.ts does not). Ordered specific-before-general so "7-9" wins over the bare "7-".
@@ -49,17 +52,21 @@ const parseBands = (text: string): RollBand[] => {
   return [...byLabel.values()].sort((a, b) => b.min - a.min);
 };
 
-// Parse a move for a rollable PC-stat action. Returns null (→ no roll button) unless the prose names one
-// of the six stats or `+nothing`. Only the first `roll +STAT` is used; the handful of multi-roll moves in
-// the book roll their first stat in v1 (a documented limitation).
+// Parse a move for a rollable action. Returns null (→ no roll button) unless the prose says "roll +"
+// something. Only the first `roll +X` is used; the handful of multi-roll moves in the book roll their
+// first target in v1 (a documented limitation).
 export const parseMoveRoll = (move: MoveDefinition): MoveRoll | null => {
   const text = bodyText(move);
-  const match = text.match(ROLL_STAT_RE);
+  const match = text.match(ROLL_TARGET_RE);
   if (!match) return null;
 
-  const stat = match[1].toUpperCase() === 'NOTHING'
-    ? 'nothing'
-    : (match[1].toUpperCase() as RollStat);
+  const target = match[1].toUpperCase();
+  const bands = parseBands(text);
 
-  return { stat, bands: parseBands(text) };
+  if (STAT_TARGETS.has(target)) return { stat: target as RollStat, bands };
+  if (target === 'NOTHING') return { stat: 'nothing', bands };
+
+  // A resource roll: nothing on the sheet to read, so it starts at 0 and keeps the prose's own wording
+  // for the button label ('+Favor', '+STAT') so the player can see what they're dialing in.
+  return { stat: 'nothing', bands, resource: match[1] };
 };

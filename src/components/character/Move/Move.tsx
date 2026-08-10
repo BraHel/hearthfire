@@ -164,7 +164,7 @@ export const Move = ({
   const rollActive = selection === undefined ? !locked : !interactiveDisabled;
 
   // Roll affordance: self-served from the character-sheet context (present on every character tab, absent
-  // in the GM move search / bare tests). Shown only on an active move whose prose parses to a stat roll —
+  // in the GM move search / bare tests). Shown only on an active move whose prose names a roll —
   // so the same shared Move offers rolling everywhere it appears, with no per-caller wiring.
   const rollContext = useCharacterRollOptional();
   const parsedRoll = rollContext && rollActive ? parseMoveRoll(move) : null;
@@ -381,6 +381,7 @@ export const Move = ({
               bands={parsedRoll!.bands}
               mod={rollResolved!.mod}
               debilityDisadvantage={rollResolved!.debilityDisadvantage}
+              resource={parsedRoll!.resource}
               onRoll={(report) => rollContext!.onRoll(move.name, report)}
             />
           )}

@@ -210,6 +210,7 @@ const CharacterSheet = ({ character, playbookOption, id, gameName, prosperity, n
         characterName: character.name?.trim() || '',
         moveName,
         stat: report.stat,
+        resource: report.resource,
         dice: report.dice,
         mod: report.mod,
         total: report.total,

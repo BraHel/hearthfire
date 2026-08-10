@@ -13,7 +13,11 @@ const diceExpr = (roll: LoggedRoll): string => {
   return `${dice}${roll.mod > 0 ? '+' : ''}${roll.mod}`;
 };
 
-const statLabel = (roll: LoggedRoll): string => (roll.stat === 'nothing' ? '' : `+${roll.stat}`);
+// What the roll was against: the stat, or the resource the player dialed in by hand (+Favor, +Prosperity).
+const statLabel = (roll: LoggedRoll): string => {
+  if (roll.resource) return `+${roll.resource}`;
+  return roll.stat === 'nothing' ? '' : `+${roll.stat}`;
+};
 
 const modeLabel = (mode: LoggedRoll['mode']): string =>
   mode === 'adv' ? ' (adv)' : mode === 'dis' ? ' (dis)' : '';

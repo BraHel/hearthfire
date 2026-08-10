@@ -73,13 +73,31 @@ describe('parseMoveRoll', () => {
     ).toBeNull();
   });
 
-  it('returns null for non-PC-stat modifiers (the ignore tail)', () => {
-    for (const token of ['favor', 'population', 'fortunes', 'prosperity', 'omens', 'defenses', 'stat']) {
+  // Modifiers the sheet can't read roll from 0 and name the resource, so the player can dial the value
+  // in by hand on the affordance's stepper.
+  it('reports non-PC-stat modifiers as resource rolls', () => {
+    for (const token of ['Favor', 'Population', 'Fortunes', 'Prosperity', 'Omens', 'Defenses', 'STAT']) {
       expect(
         parseMoveRoll(move([{ kind: 'para', text: `roll +${token}: on a 10+, good.` }])),
-        `+${token} should not produce a roll`,
-      ).toBeNull();
+        `+${token} should produce a resource roll`,
+      ).toMatchObject({ stat: 'nothing', resource: token });
     }
+  });
+
+  it('keeps the resource spelled as the prose wrote it', () => {
+    const result = parseMoveRoll(move([{ kind: 'para', text: 'spend 1-3 Favor and roll +Favor spent: on a 10+, good.' }]));
+    expect(result?.resource).toBe('Favor');
+  });
+
+  it('leaves `resource` unset for stat and +nothing rolls', () => {
+    expect(parseMoveRoll(move([{ kind: 'para', text: 'roll +WIS: on a 10+, good.' }]))?.resource).toBeUndefined();
+    expect(parseMoveRoll(move([{ kind: 'para', text: 'roll +nothing: on a 10+, good.' }]))?.resource).toBeUndefined();
+  });
+
+  // "Instead of rolling +STAT" is prose *about* rolling, not an instruction to roll — the trigger needs
+  // the bare verb so a widened target group doesn't start lighting up narration.
+  it('does not trigger on "rolling +X"', () => {
+    expect(parseMoveRoll(move([{ kind: 'para', text: 'Instead of rolling +STAT, add +1.' }]))).toBeNull();
   });
 
   it('is case-insensitive on the roll trigger', () => {
