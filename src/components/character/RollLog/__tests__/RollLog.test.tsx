@@ -55,6 +55,19 @@ describe('RollLog', () => {
     expect(screen.getByText(/Trade & Barter \+Prosperity/)).toBeInTheDocument();
   });
 
+  // With the discarded die printed, an advantage roll read "2+5+6+1 = 12" and the sum looked broken.
+  it('leaves the discarded die out of the sum on an advantage roll', () => {
+    render(<RollLog rolls={[roll({ mode: 'adv', dice: [2, 5, 6], dropped: 0, mod: 1, total: 12 })]} />);
+    expect(screen.getByText('5+6+1 =')).toBeInTheDocument();
+    expect(screen.getByText('12')).toBeInTheDocument();
+  });
+
+  // Rolls logged before the discarded die was recorded have no `dropped` and must still render.
+  it('prints every die on an older entry that never recorded a discard', () => {
+    render(<RollLog rolls={[roll({ mode: 'adv', dice: [2, 5, 6], mod: 1, total: 12 })]} />);
+    expect(screen.getByText('2+5+6+1 =')).toBeInTheDocument();
+  });
+
   it('marks advantage and disadvantage rolls', () => {
     const { rerender } = render(<RollLog rolls={[roll({ mode: 'adv' })]} />);
     expect(screen.getByText(/\(adv\)/)).toBeInTheDocument();

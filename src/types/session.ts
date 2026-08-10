@@ -84,7 +84,7 @@ export interface SteadingData {
 // A dice roll made from a move card, appended to the shared game doc so the GM sees the party's rolls
 // live. Ephemeral by nature: the log is capped and old rolls fall off (see useGame.logRoll).
 export interface LoggedRoll {
-  id: string; // `${characterId}-${createdAt}`
+  id: string; // `${characterId}-${rollId}` — stable across an advantage/disadvantage change to the roll
   characterId: string;
   characterName: string;
   moveName: string;
@@ -93,6 +93,9 @@ export interface LoggedRoll {
   // the log can't say what the modifier stood for.
   resource?: string;
   dice: number[];
+  // Index into `dice` of the die advantage/disadvantage discarded, so the log can leave it out of the
+  // arithmetic. Absent on normal rolls and on entries logged before this was recorded.
+  dropped?: number | null;
   mod: number;
   total: number;
   mode: 'normal' | 'adv' | 'dis';

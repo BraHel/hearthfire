@@ -205,13 +205,16 @@ const CharacterSheet = ({ character, playbookOption, id, gameName, prosperity, n
     (moveName: string, report: RollReport) => {
       const createdAt = Date.now();
       const roll: LoggedRoll = {
-        id: `${character.id}-${createdAt}`,
+        // Keyed on the roll's own id, not the timestamp: switching a roll to advantage/disadvantage
+        // re-reports the same roll, and logRoll's id-merge then edits that entry instead of adding one.
+        id: `${character.id}-${report.rollId}`,
         characterId: character.id,
         characterName: character.name?.trim() || '',
         moveName,
         stat: report.stat,
         resource: report.resource,
         dice: report.dice,
+        dropped: report.dropped,
         mod: report.mod,
         total: report.total,
         mode: report.mode,

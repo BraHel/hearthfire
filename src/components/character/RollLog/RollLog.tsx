@@ -6,9 +6,12 @@ interface RollLogProps {
   rolls: LoggedRoll[];
 }
 
-// Render a roll's dice as "4+3" with the modifier appended when non-zero: "4+3+1".
+// Render a roll's dice as "4+3" with the modifier appended when non-zero: "4+3+1". The die that
+// advantage/disadvantage discarded is left out — printing it made the sum look wrong ("2+5+6 = 12"),
+// and its face is the one part of a roll nobody acts on. Older entries carry no `dropped`, so they
+// still print every die.
 const diceExpr = (roll: LoggedRoll): string => {
-  const dice = roll.dice.join('+');
+  const dice = roll.dice.filter((_, i) => i !== roll.dropped).join('+');
   if (roll.mod === 0) return dice;
   return `${dice}${roll.mod > 0 ? '+' : ''}${roll.mod}`;
 };

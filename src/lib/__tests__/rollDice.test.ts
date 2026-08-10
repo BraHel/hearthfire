@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { rollAction, statModifier, resolveRollStat, bandFor } from '../rollDice';
+import { rollAction, remodeRoll, statModifier, resolveRollStat, bandFor } from '../rollDice';
 import type { CharacterData, RollBand } from '@/types';
 
 const BANDS: RollBand[] = [
@@ -39,6 +39,51 @@ describe('rollAction', () => {
     expect(r.dice).toEqual([2, 5, 3]);
     expect(r.dropped).toBe(1); // the 5 is highest
     expect(r.total).toBe(2 + 3 + 1);
+  });
+});
+
+describe('remodeRoll', () => {
+  it('keeps the dice already rolled and adds a third for advantage', () => {
+    seedDice([2, 5]);
+    const first = rollAction(1, 'normal');
+    expect(first.dice).toEqual([2, 5]);
+
+    seedDice([6]);
+    const adv = remodeRoll(first, 'adv', null);
+    // The original 2 and 5 survive; only the third die is new.
+    expect(adv.dice).toEqual([2, 5, 6]);
+    expect(adv.dropped).toBe(0); // the 2 is lowest
+    expect(adv.total).toBe(5 + 6 + 1);
+  });
+
+  it('drops the highest for disadvantage, carrying the same modifier', () => {
+    seedDice([2, 5]);
+    const first = rollAction(-1, 'normal');
+
+    seedDice([6]);
+    const dis = remodeRoll(first, 'dis', null);
+    expect(dis.dice).toEqual([2, 5, 6]);
+    expect(dis.total).toBe(2 + 5 - 1);
+  });
+
+  it('returns the original two dice when switched back to normal', () => {
+    seedDice([2, 5, 6]);
+    const adv = rollAction(0, 'adv');
+
+    const back = remodeRoll(adv, 'normal', null);
+    expect(back.dice).toEqual([2, 5]);
+    expect(back.dropped).toBeNull();
+    expect(back.total).toBe(2 + 5);
+  });
+
+  // Otherwise toggling normal → adv → normal → adv would be a free re-roll of the third die.
+  it('reuses the spare die instead of rolling a fresh one', () => {
+    seedDice([2, 5, 1]); // a 1 sits next in the sequence for anything that re-rolls
+    const first = rollAction(0, 'normal');
+
+    const adv = remodeRoll(first, 'adv', 6);
+    // The spare 6 comes back, not the 1 the generator would have handed out.
+    expect(adv.dice).toEqual([2, 5, 6]);
   });
 });
 

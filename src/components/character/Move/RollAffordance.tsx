@@ -2,17 +2,22 @@ import clsx from 'clsx';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Text } from '@/components/ui';
 import type { RollBand, RollStat } from '@/types';
-import { bandFor, rollAction, type RollMode, type RollResult } from '@/lib/rollDice';
+import { bandFor, remodeRoll, rollAction, type RollMode, type RollResult } from '@/lib/rollDice';
+import { generateId } from '@/lib/id';
 import styles from './RollAffordance.module.css';
 
 // The subset of a completed roll a parent needs to log. Kept structural so Move doesn't depend on the
 // session type; Moves.tsx maps it onto a LoggedRoll.
 export interface RollReport {
+  // Identity of the roll itself, stable across advantage/disadvantage changes: switching mode alters a
+  // roll rather than making a new one, so the log entry is updated in place instead of duplicated.
+  rollId: string;
   stat: RollStat;
   // The non-stat resource this rolled against, when there was one — the log has no other way to say
   // what the modifier stood for.
   resource?: string;
   dice: number[];
+  dropped: number | null;
   mod: number;
   total: number;
   mode: RollMode;
@@ -40,9 +45,9 @@ const ADJUST_MIN = -9;
 const ADJUST_MAX = 9;
 
 const MODES: { value: RollMode; label: string; title: string }[] = [
-  { value: 'adv', label: 'Adv', title: 'Advantage — roll 3 dice, drop the lowest' },
-  { value: 'normal', label: '—', title: 'Normal — roll 2 dice' },
-  { value: 'dis', label: 'Dis', title: 'Disadvantage — roll 3 dice, drop the highest' },
+  { value: 'adv', label: 'Adv', title: 'Advantage — 3 dice, drop the lowest' },
+  { value: 'normal', label: '—', title: 'Normal — 2 dice' },
+  { value: 'dis', label: 'Dis', title: 'Disadvantage — 3 dice, drop the highest' },
 ];
 
 // The trigger button's visible label: the stat it rolls (`+WIS`) or the resource it rolls against
@@ -71,29 +76,44 @@ export const RollAffordance = ({
   // -1 for that" adjustments the prose asks for on top of a stat.
   const [adjust, setAdjust] = useState(0);
   const tumbleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Identity of the roll on the table, so a mode change updates its log entry instead of adding one.
+  const rollId = useRef('');
+  // A third die this roll has rolled and since set aside by switching back to normal. Held so flipping
+  // back to advantage/disadvantage re-reads it — otherwise toggling would be a free re-roll of that die.
+  const spare = useRef<number | null>(null);
 
   useEffect(() => () => clearTimeout(tumbleTimer.current), []);
+
+  const report = useCallback(
+    (next: RollResult) => {
+      onRoll?.({
+        rollId: rollId.current,
+        stat,
+        resource,
+        dice: next.dice,
+        dropped: next.dropped,
+        mod: next.mod,
+        total: next.total,
+        mode: next.mode,
+        band: bandFor(next.total, bands)?.label ?? null,
+      });
+    },
+    [bands, onRoll, stat, resource],
+  );
 
   const doRoll = useCallback(
     (rollMode: RollMode) => {
       const next = rollAction(mod + adjust, rollMode);
-      const band = bandFor(next.total, bands);
+      rollId.current = generateId();
+      spare.current = null;
       setResult(next);
       setTumbling(true);
       clearTimeout(tumbleTimer.current);
       // The result is decided immediately; only the display tumbles, then settles.
       tumbleTimer.current = setTimeout(() => setTumbling(false), TUMBLE_MS);
-      onRoll?.({
-        stat,
-        resource,
-        dice: next.dice,
-        mod: next.mod,
-        total: next.total,
-        mode: next.mode,
-        band: band?.label ?? null,
-      });
+      report(next);
     },
-    [mod, adjust, bands, onRoll, stat, resource],
+    [mod, adjust, report],
   );
 
   // First tap opens the panel and rolls; the button becomes the re-roll control once open.
@@ -102,12 +122,20 @@ export const RollAffordance = ({
     doRoll(mode);
   }, [open, mode, doRoll]);
 
+  // Before a roll the toggle only arms the next one. Once dice are on the table it re-reads *those*
+  // dice under the new mode — advantage/disadvantage add a third, normal sets it aside — so a player who
+  // remembers their advantage after rolling doesn't lose the roll they already made.
   const handleMode = useCallback(
     (next: RollMode) => {
+      if (next === mode) return;
       setMode(next);
-      if (open) doRoll(next);
+      if (!result) return;
+      const remoded = remodeRoll(result, next, spare.current);
+      spare.current = remoded.dice[2] ?? result.dice[2] ?? spare.current;
+      setResult(remoded);
+      report(remoded);
     },
-    [open, doRoll],
+    [mode, result, report],
   );
 
   // Tapping the stepper never re-rolls — it sets the modifier for the *next* roll, so a multi-click
@@ -152,6 +180,25 @@ export const RollAffordance = ({
             </Text>
           )}
         </Button>
+
+        <div className={styles.modeToggle} role="group" aria-label="Advantage / disadvantage">
+          {MODES.map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              className={clsx(styles.modeButton, mode === m.value && styles.modeButtonActive)}
+              aria-pressed={mode === m.value}
+              // Only the em-dash button needs an accessible name — its visible label is punctuation.
+              // The Adv/Dis buttons are named by their visible text; overriding it with aria-label
+              // would break "click Adv" voice control (Label in Name).
+              aria-label={m.value === 'normal' ? m.title : undefined}
+              title={m.title}
+              onClick={() => handleMode(m.value)}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
 
         <div className={styles.adjust} role="group" aria-label="Roll modifier">
           <Button
@@ -200,24 +247,6 @@ export const RollAffordance = ({
             <span className={clsx(styles.total, !tumbling && styles.totalSettled)}>
               = {result.total}
             </span>
-            <div className={styles.modeToggle} role="group" aria-label="Advantage / disadvantage">
-              {MODES.map((m) => (
-                <button
-                  key={m.value}
-                  type="button"
-                  className={clsx(styles.modeButton, mode === m.value && styles.modeButtonActive)}
-                  aria-pressed={mode === m.value}
-                  // Only the em-dash button needs an accessible name — its visible label is punctuation.
-                  // The Adv/Dis buttons are named by their visible text; overriding it with aria-label
-                  // would break "click Adv" voice control (Label in Name).
-                  aria-label={m.value === 'normal' ? m.title : undefined}
-                  title={m.title}
-                  onClick={() => handleMode(m.value)}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
           </div>
           {hitBand && (
             <Text as="span" size="xs" weight="semibold" color="accent" className={styles.band}>
