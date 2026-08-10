@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import type { MinorArcanum } from '@/types';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import { MinorArcanaCard } from '../MinorArcanaCard';
@@ -23,8 +23,11 @@ describe('MinorArcanaCard unlock — default count', () => {
         arcanum={baseArcanum()}
         requirementsChecked={{ req0: true }}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -38,8 +41,11 @@ describe('MinorArcanaCard unlock — default count', () => {
         arcanum={baseArcanum()}
         requirementsChecked={{ req0: true, req1: true }}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -58,8 +64,11 @@ describe('MinorArcanaCard unlock — requirementsUnlockAt', () => {
         arcanum={arcanum}
         requirementsChecked={{}}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -73,8 +82,11 @@ describe('MinorArcanaCard unlock — requirementsUnlockAt', () => {
         arcanum={arcanum}
         requirementsChecked={{ req1: true }}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -96,8 +108,11 @@ describe('MinorArcanaCard unlock — unlockGroups', () => {
         arcanum={arcanum}
         requirementsChecked={{ req0: true }}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -111,8 +126,11 @@ describe('MinorArcanaCard unlock — unlockGroups', () => {
         arcanum={arcanum}
         requirementsChecked={{ req1: true, req2: true }}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -127,8 +145,11 @@ describe('MinorArcanaCard unlock — unlockGroups', () => {
         arcanum={arcanum}
         requirementsChecked={{ req2: true }}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -142,8 +163,11 @@ describe('MinorArcanaCard unlock — unlockGroups', () => {
         arcanum={arcanum}
         requirementsChecked={{ req1: true }}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -165,8 +189,11 @@ describe('MinorArcanaCard requirementsDivider', () => {
         arcanum={arcanum}
         requirementsChecked={{}}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -180,8 +207,11 @@ describe('MinorArcanaCard requirementsDivider', () => {
         arcanum={arcanum}
         requirementsChecked={{}}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -201,8 +231,11 @@ describe('MinorArcanaCard requirementsDivider', () => {
         arcanum={baseArcanum()}
         requirementsChecked={{}}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -223,8 +256,11 @@ describe('MinorArcanaCard requirementsNote', () => {
         arcanum={arcanum}
         requirementsChecked={{}}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -243,13 +279,231 @@ describe('MinorArcanaCard requirementsNote', () => {
         arcanum={arcanum}
         requirementsChecked={{ req0: true, req1: true }}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
     );
     expect(screen.getByText('Test Move')).toBeInTheDocument();
+  });
+});
+
+describe('MinorArcanaCard marksTracker', () => {
+  // Modeled on id 31 ("A cracked flute"): unlock is earned by marking circles on a roll, and the
+  // single requirement string is prose explaining the payoff — not a task to tick off.
+  const arcanum = baseArcanum({
+    requirements: ['When you mark all three circles, you unlock the mysteries of the flute.'],
+    marksTracker: { label: 'circles marked', max: 3 },
+  });
+
+  it('renders clickable dots and no requirement checkboxes', () => {
+    renderWithProviders(
+      <MinorArcanaCard
+        arcanum={arcanum}
+        requirementsChecked={{}}
+        onToggleRequirement={noop}
+        onMarksChange={noop}
+        onTrackerChange={noop}
+        onStatusChange={noop}
+        onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
+        onNotesChange={noop}
+        onRemove={noop}
+      />,
+    );
+    expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+    expect(screen.getByRole('group', { name: 'circles marked' })).toBeInTheDocument();
+    expect(
+      screen.getByText('When you mark all three circles, you unlock the mysteries of the flute.'),
+    ).toBeInTheDocument();
+  });
+
+  it('reports the clicked dot count', () => {
+    const onMarksChange = vi.fn();
+    renderWithProviders(
+      <MinorArcanaCard
+        arcanum={arcanum}
+        requirementsChecked={{}}
+        marksValue={1}
+        onToggleRequirement={noop}
+        onMarksChange={onMarksChange}
+        onTrackerChange={noop}
+        onStatusChange={noop}
+        onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
+        onNotesChange={noop}
+        onRemove={noop}
+      />,
+    );
+    screen.getByRole('button', { name: 'Use 3' }).click();
+    expect(onMarksChange).toHaveBeenCalledWith(3);
+  });
+
+  it('stays locked below the mark threshold, even with requirement keys checked', () => {
+    // requirementsChecked must not be a back door to unlocking a marks-based arcanum.
+    renderWithProviders(
+      <MinorArcanaCard
+        arcanum={arcanum}
+        requirementsChecked={{ req0: true }}
+        marksValue={2}
+        onToggleRequirement={noop}
+        onMarksChange={noop}
+        onTrackerChange={noop}
+        onStatusChange={noop}
+        onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
+        onNotesChange={noop}
+        onRemove={noop}
+      />,
+    );
+    expect(screen.queryByText('Test Move')).not.toBeInTheDocument();
+  });
+
+  it('unlocks once every circle is marked', () => {
+    renderWithProviders(
+      <MinorArcanaCard
+        arcanum={arcanum}
+        requirementsChecked={{}}
+        marksValue={3}
+        onToggleRequirement={noop}
+        onMarksChange={noop}
+        onTrackerChange={noop}
+        onStatusChange={noop}
+        onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
+        onNotesChange={noop}
+        onRemove={noop}
+      />,
+    );
+    expect(screen.getByText('Test Move')).toBeInTheDocument();
+  });
+});
+
+describe('MinorArcanaCard move statuses', () => {
+  // Modeled on id 51 ("Sublime Words"): named states the move tells you to mark and clear, marked
+  // independently — the book's order is severity, not a sequence.
+  const arcanum = baseArcanum({
+    move: {
+      name: 'Test Move',
+      text: 'Move text.',
+      statuses: {
+        label: 'Voice',
+        items: [
+          { id: 'raspy', label: 'raspy voice' },
+          { id: 'coughing', label: 'coughing fits' },
+          { id: 'mute', label: 'mute' },
+        ],
+      },
+    },
+  });
+  const unlocked = { req0: true, req1: true };
+
+  it('renders one checkbox per status, reflecting saved state', () => {
+    renderWithProviders(
+      <MinorArcanaCard
+        arcanum={arcanum}
+        requirementsChecked={unlocked}
+        statusChecks={{ raspy: true }}
+        onToggleRequirement={noop}
+        onMarksChange={noop}
+        onTrackerChange={noop}
+        onStatusChange={noop}
+        onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
+        onNotesChange={noop}
+        onRemove={noop}
+      />,
+    );
+    // The two unlock requirements are checked off above, so the move's own boxes are the rest.
+    expect(screen.getByRole('checkbox', { name: 'raspy voice' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'coughing fits' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'mute' })).not.toBeChecked();
+  });
+
+  it('reports the toggled status id, leaving its siblings alone', () => {
+    const onStatusChange = vi.fn();
+    renderWithProviders(
+      <MinorArcanaCard
+        arcanum={arcanum}
+        requirementsChecked={unlocked}
+        statusChecks={{ raspy: true }}
+        onToggleRequirement={noop}
+        onMarksChange={noop}
+        onTrackerChange={noop}
+        onStatusChange={onStatusChange}
+        onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
+        onNotesChange={noop}
+        onRemove={noop}
+      />,
+    );
+    screen.getByRole('checkbox', { name: 'coughing fits' }).click();
+    expect(onStatusChange).toHaveBeenCalledTimes(1);
+    expect(onStatusChange).toHaveBeenCalledWith('coughing', true);
+  });
+});
+
+describe('MinorArcanaCard follower Loyalty', () => {
+  // Modeled on the cracked flute's andalau: an unlocked follower tracked by Loyalty as well as HP.
+  const arcanum = baseArcanum({
+    move: {
+      name: 'Test Move',
+      text: 'Move text.',
+      follower: {
+        name: 'The Andalau of the Flute',
+        tags: 'Spirit, tiny',
+        hp: 8,
+        instinct: 'to play and frolic',
+        loyalty: 3,
+        cost: 'entertainment',
+      },
+    },
+  });
+  const unlocked = { req0: true, req1: true };
+
+  it('renders the Loyalty dots with the saved value marked', () => {
+    renderWithProviders(
+      <MinorArcanaCard
+        arcanum={arcanum}
+        requirementsChecked={unlocked}
+        followerLoyalty={2}
+        onToggleRequirement={noop}
+        onMarksChange={noop}
+        onTrackerChange={noop}
+        onStatusChange={noop}
+        onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
+        onNotesChange={noop}
+        onRemove={noop}
+      />,
+    );
+    const dots = within(screen.getByRole('group', { name: 'Loyalty' })).getAllByRole('button');
+    expect(dots.map((d) => d.getAttribute('aria-pressed'))).toEqual(['true', 'true', 'false']);
+  });
+
+  it('reports the clicked Loyalty count', () => {
+    const onFollowerLoyaltyChange = vi.fn();
+    renderWithProviders(
+      <MinorArcanaCard
+        arcanum={arcanum}
+        requirementsChecked={unlocked}
+        followerLoyalty={0}
+        onToggleRequirement={noop}
+        onMarksChange={noop}
+        onTrackerChange={noop}
+        onStatusChange={noop}
+        onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={onFollowerLoyaltyChange}
+        onNotesChange={noop}
+        onRemove={noop}
+      />,
+    );
+    within(screen.getByRole('group', { name: 'Loyalty' })).getAllByRole('button')[0].click();
+    expect(onFollowerLoyaltyChange).toHaveBeenCalledWith(1);
   });
 });
 
@@ -271,8 +525,11 @@ describe('MinorArcanaCard requirementRepeats', () => {
         arcanum={arcanum}
         requirementsChecked={{}}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -290,8 +547,11 @@ describe('MinorArcanaCard requirementRepeats', () => {
         arcanum={arcanum}
         requirementsChecked={{ req0: true, req1: true, 'req2-0': true, 'req2-1': true }}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -311,8 +571,11 @@ describe('MinorArcanaCard requirementRepeats', () => {
           'req2-2': true,
         }}
         onToggleRequirement={noop}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,
@@ -327,8 +590,11 @@ describe('MinorArcanaCard requirementRepeats', () => {
         arcanum={arcanum}
         requirementsChecked={{ 'req2-0': true }}
         onToggleRequirement={onToggleRequirement}
+        onMarksChange={noop}
         onTrackerChange={noop}
+        onStatusChange={noop}
         onFollowerHpChange={noop}
+        onFollowerLoyaltyChange={noop}
         onNotesChange={noop}
         onRemove={noop}
       />,

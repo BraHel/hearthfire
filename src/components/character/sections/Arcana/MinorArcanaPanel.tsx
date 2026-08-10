@@ -10,28 +10,40 @@ interface MinorArcanaCardRowProps {
   entry: ArcanaMinorEntry;
   arcanum: MinorArcanum;
   onToggleRequirement: (id: string, key: string, checked: boolean) => void;
+  onMarksChange: (id: string, value: number) => void;
   onTrackerChange: (id: string, value: number) => void;
+  onStatusChange: (id: string, statusId: string, checked: boolean) => void;
   onFollowerHpChange: (id: string, index: number, value: number) => void;
+  onFollowerLoyaltyChange: (id: string, value: number) => void;
   onNotesChange: (id: string, value: string) => void;
   onRemove: (id: string) => void;
 }
 
-const MinorArcanaCardRow = memo(({ entry, arcanum, onToggleRequirement, onTrackerChange, onFollowerHpChange, onNotesChange, onRemove }: MinorArcanaCardRowProps) => {
+const MinorArcanaCardRow = memo(({ entry, arcanum, onToggleRequirement, onMarksChange, onTrackerChange, onStatusChange, onFollowerHpChange, onFollowerLoyaltyChange, onNotesChange, onRemove }: MinorArcanaCardRowProps) => {
   const handleToggle = useCallback((key: string, checked: boolean) => onToggleRequirement(entry.id, key, checked), [entry.id, onToggleRequirement]);
+  const handleMarks = useCallback((value: number) => onMarksChange(entry.id, value), [entry.id, onMarksChange]);
   const handleTracker = useCallback((value: number) => onTrackerChange(entry.id, value), [entry.id, onTrackerChange]);
+  const handleStatus = useCallback((statusId: string, checked: boolean) => onStatusChange(entry.id, statusId, checked), [entry.id, onStatusChange]);
   const handleFollowerHp = useCallback((index: number, value: number) => onFollowerHpChange(entry.id, index, value), [entry.id, onFollowerHpChange]);
+  const handleFollowerLoyalty = useCallback((value: number) => onFollowerLoyaltyChange(entry.id, value), [entry.id, onFollowerLoyaltyChange]);
   const handleNotes = useCallback((value: string) => onNotesChange(entry.id, value), [entry.id, onNotesChange]);
   const handleRemove = useCallback(() => onRemove(entry.id), [entry.id, onRemove]);
   return (
     <MinorArcanaCard
       arcanum={arcanum}
       requirementsChecked={entry.requirementsChecked}
+      marksValue={entry.marksValue}
       trackerValue={entry.trackerValue}
+      statusChecks={entry.statusChecks}
       followerHp={entry.followerHp}
+      followerLoyalty={entry.followerLoyalty}
       notes={entry.notes}
       onToggleRequirement={handleToggle}
+      onMarksChange={handleMarks}
       onTrackerChange={handleTracker}
+      onStatusChange={handleStatus}
       onFollowerHpChange={handleFollowerHp}
+      onFollowerLoyaltyChange={handleFollowerLoyalty}
       onNotesChange={handleNotes}
       onRemove={handleRemove}
     />
@@ -52,10 +64,14 @@ export const MinorArcanaPanel = ({ arcanaMinor, arcanaMinorRef, saveMinor }: Min
   const handleAddMinor = useCallback(
     (arcanum: MinorArcanum) => {
       const entry: ArcanaMinorEntry = { id: arcanum.id, requirementsChecked: {} };
+      if (arcanum.marksTracker) entry.marksValue = 0;
       if (arcanum.move.tracker) entry.trackerValue = 0;
       if (arcanum.move.follower) {
         const count = arcanum.move.follower.hpCount ?? 1;
         entry.followerHp = Array.from({ length: count }, () => arcanum.move.follower!.hp ?? 0);
+        if (arcanum.move.follower.loyaltyStart !== undefined) {
+          entry.followerLoyalty = arcanum.move.follower.loyaltyStart;
+        }
       }
       saveMinor([...arcanaMinorRef.current, entry]);
       setMinorModalOpen(false);
@@ -86,9 +102,25 @@ export const MinorArcanaPanel = ({ arcanaMinor, arcanaMinorRef, saveMinor }: Min
     [saveMinor],
   );
 
+  const handleMinorMarksChange = useCallback(
+    (id: string, value: number) => {
+      saveMinor(arcanaMinorRef.current.map((a) => (a.id === id ? { ...a, marksValue: value } : a)));
+    },
+    [saveMinor],
+  );
+
   const handleMinorTrackerChange = useCallback(
     (id: string, value: number) => {
       saveMinor(arcanaMinorRef.current.map((a) => (a.id === id ? { ...a, trackerValue: value } : a)));
+    },
+    [saveMinor],
+  );
+
+  const handleMinorStatusChange = useCallback(
+    (id: string, statusId: string, checked: boolean) => {
+      saveMinor(arcanaMinorRef.current.map((a) =>
+        a.id === id ? { ...a, statusChecks: { ...a.statusChecks, [statusId]: checked } } : a,
+      ));
     },
     [saveMinor],
   );
@@ -108,6 +140,13 @@ export const MinorArcanaPanel = ({ arcanaMinor, arcanaMinorRef, saveMinor }: Min
         followerHp[index] = value;
         return { ...a, followerHp };
       }));
+    },
+    [saveMinor],
+  );
+
+  const handleMinorFollowerLoyaltyChange = useCallback(
+    (id: string, value: number) => {
+      saveMinor(arcanaMinorRef.current.map((a) => (a.id === id ? { ...a, followerLoyalty: value } : a)));
     },
     [saveMinor],
   );
@@ -153,8 +192,11 @@ export const MinorArcanaPanel = ({ arcanaMinor, arcanaMinorRef, saveMinor }: Min
                   entry={entry}
                   arcanum={arcanum}
                   onToggleRequirement={handleToggleRequirement}
+                  onMarksChange={handleMinorMarksChange}
                   onTrackerChange={handleMinorTrackerChange}
+                  onStatusChange={handleMinorStatusChange}
                   onFollowerHpChange={handleMinorFollowerHpChange}
+                  onFollowerLoyaltyChange={handleMinorFollowerLoyaltyChange}
                   onNotesChange={handleMinorNotesChange}
                   onRemove={handleRemoveMinor}
                 />

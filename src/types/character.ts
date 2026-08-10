@@ -144,8 +144,16 @@ export interface PlaybookFeatures
 export interface ArcanaMinorEntry {
   id: string;
   requirementsChecked: Record<string, boolean>;
+  // Circles marked toward unlocking a marksTracker arcanum (see MinorArcanum.marksTracker); unused
+  // by the checkbox-based arcana, which drive their unlock from requirementsChecked.
+  marksValue?: number;
   trackerValue?: number;
+  // Marked states of the move's statuses group (see ArcanaMove.statuses), keyed by status id.
+  statusChecks?: Record<string, boolean>;
   followerHp?: number[];
+  // Loyalty marked on the move's follower, for the followers tracked by Loyalty as well as HP
+  // (e.g. the cracked flute's andalau). One follower per minor arcanum, so a single value.
+  followerLoyalty?: number;
   carried?: boolean;
   notes?: string;
 }
