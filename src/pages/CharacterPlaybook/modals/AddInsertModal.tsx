@@ -1,6 +1,6 @@
 import { useState, useId, useCallback, useMemo } from 'react';
 import { Button, Heading, Modal, Radio, RadioGroup } from '@/components/ui';
-import { INSERT_OPTIONS, type InsertOption } from '@/hooks/useInsertTabs';
+import { INSERT_TABS, type InsertOption } from '@/lib/insertTabs';
 import styles from './AddInsertModal.module.css';
 
 interface AddInsertModalProps {
@@ -13,12 +13,12 @@ interface AddInsertModalProps {
 export const AddInsertModal = ({ open, existingInserts, onClose, onAdd }: AddInsertModalProps) => {
   const headingId = useId();
   const availableOptions = useMemo(
-    () => INSERT_OPTIONS.filter((opt) => !existingInserts.includes(opt)),
+    () => INSERT_TABS.filter(({ id }) => !existingInserts.includes(id)),
     [existingInserts]
   );
   // The parent mounts this modal only while open, so the default selection is set
   // once on mount from the currently available options — no reset effect needed.
-  const [selected, setSelected] = useState<InsertOption>(() => availableOptions[0] ?? INSERT_OPTIONS[0]);
+  const [selected, setSelected] = useState<InsertOption>(() => availableOptions[0]?.id ?? INSERT_TABS[0].id);
 
   const handleSelectChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setSelected(e.currentTarget.value as InsertOption);
@@ -32,13 +32,13 @@ export const AddInsertModal = ({ open, existingInserts, onClose, onAdd }: AddIns
     <Modal open={open} onClose={onClose} aria-labelledby={headingId}>
       <Heading as="h2" size="md" id={headingId}>Add an Insert</Heading>
       <RadioGroup legend="Insert type" legendHidden className={styles.options}>
-        {availableOptions.map((opt) => (
+        {availableOptions.map(({ id, label }) => (
           <Radio
-            key={opt}
+            key={id}
             name="insert-option"
-            value={opt}
-            label={opt}
-            checked={selected === opt}
+            value={id}
+            label={label}
+            checked={selected === id}
             onChange={handleSelectChange}
           />
         ))}

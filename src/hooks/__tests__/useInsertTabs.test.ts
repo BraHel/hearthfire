@@ -10,8 +10,9 @@ import type { Character, CharacterData } from '@/types';
 
 afterEach(() => { vi.clearAllMocks(); });
 
-// Three fixed tabs precede the playbook tabs in handleAddInsert's math.
-const PLAYBOOK_TAB_COUNT = 2;
+// Tabs that precede the inserts, as the sheet counts them from its real tab list: three fixed
+// tabs (PC Playbook, Inventory, Arcana) plus two playbook tabs.
+const NON_INSERT_TAB_COUNT = 5;
 
 const makeCharacter = (data?: CharacterData): Character => ({
   id: 'char-1',
@@ -23,12 +24,11 @@ const makeCharacter = (data?: CharacterData): Character => ({
 
 const setup = (data?: CharacterData, onSave = vi.fn().mockResolvedValue(undefined)) => {
   const setActiveIndex = vi.fn();
-  const getPlaybookTabCount = vi.fn().mockReturnValue(PLAYBOOK_TAB_COUNT);
   const character = makeCharacter(data);
   const hook = renderHook(() =>
-    useInsertTabs(character, onSave, getPlaybookTabCount, setActiveIndex),
+    useInsertTabs(character, onSave, NON_INSERT_TAB_COUNT, setActiveIndex),
   );
-  return { hook, onSave, setActiveIndex, getPlaybookTabCount };
+  return { hook, onSave, setActiveIndex };
 };
 
 describe('useInsertTabs — add/remove modal state', () => {

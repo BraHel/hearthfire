@@ -1,16 +1,15 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useToast } from '@/components/app';
-import type { Character, CharacterData, PlaybookType } from '@/types';
-
-const INSERT_OPTIONS = ['Revenant', 'Ghost', 'Thrall', 'Followers'] as const;
-export type InsertOption = typeof INSERT_OPTIONS[number];
-
-export { INSERT_OPTIONS };
+import { INSERT_TABS, getInsertTab, type InsertOption } from '@/lib/insertTabs';
+import type { Character, CharacterData } from '@/types';
 
 export const useInsertTabs = (
   character: Character,
   onSave: (data: Partial<CharacterData>) => Promise<void>,
-  getPlaybookTabCount: (playbook: PlaybookType, data: CharacterData | undefined) => number,
+  // How many tabs precede the inserts on the sheet (the static tabs plus this playbook's own).
+  // Passed in from the caller's real tab list rather than hardcoded here: a hardcoded count
+  // silently activated the wrong tab the moment a static tab was added.
+  nonInsertTabCount: number,
   setActiveIndex: (i: number) => void,
 ) => {
   const { addToast } = useToast();
@@ -25,7 +24,7 @@ export const useInsertTabs = (
   }, []);
 
   const removeInsertHandlers = useMemo(
-    () => Object.fromEntries(INSERT_OPTIONS.map((opt) => [opt, () => handleRequestRemoveInsert(opt)])),
+    () => Object.fromEntries(INSERT_TABS.map(({ id }) => [id, () => handleRequestRemoveInsert(id)])),
     [handleRequestRemoveInsert],
   );
 
@@ -36,10 +35,11 @@ export const useInsertTabs = (
     if (!removeInsert) return;
     const next = (character.data?.inserts ?? []).filter((i) => i !== removeInsert);
     const patch: Partial<CharacterData> = { inserts: next };
-    // Followers must be explicitly deleted, not just omitted from playbookFeatures —
-    // updateCharacterData's merge is additive, so an omitted key survives the spread
-    // and reappears from the freshly-read doc (issue #241).
-    if (removeInsert === 'Followers') patch.deleteFeatureKeys = ['followers'];
+    // The insert's own playbookFeatures keys (e.g. Followers' `followers`) must be explicitly
+    // deleted, not just omitted — updateCharacterData's merge is additive, so an omitted key
+    // survives the spread and reappears from the freshly-read doc (issue #241).
+    const deleteFeatureKeys = getInsertTab(removeInsert)?.deleteFeatureKeys;
+    if (deleteFeatureKeys?.length) patch.deleteFeatureKeys = [...deleteFeatureKeys];
     await onSave(patch);
     setActiveIndex(0);
   }, [removeInsert, character.data, onSave, setActiveIndex]);
@@ -51,16 +51,17 @@ export const useInsertTabs = (
       return;
     }
     const next = [...current, insert];
-    const fixedTabCount = 3 + getPlaybookTabCount(character.playbook, character.data);
     try {
       await onSave({ inserts: next });
-      setActiveIndex(fixedTabCount + next.length - 1);
+      // Inserts render after every other tab and the new one is appended last, so its index is
+      // the count of everything that precedes it plus its own position in the insert list.
+      setActiveIndex(nonInsertTabCount + next.length - 1);
       setAddTabOpen(false);
     } catch {
       // Save failed — keep the modal open so the user knows it didn't take.
       addToast('Failed to add insert. Try again.', 'error');
     }
-  }, [character.data, character.playbook, onSave, getPlaybookTabCount, setActiveIndex, addToast]);
+  }, [character.data, onSave, nonInsertTabCount, setActiveIndex, addToast]);
 
   return {
     addTabOpen,
