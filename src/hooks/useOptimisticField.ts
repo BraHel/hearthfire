@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, type MutableRefObject } from 'react';
 import { useLatest } from './useLatest';
 import { useFirestoreSync } from './useFirestoreSync';
 import { useToast } from '@/components/app';
@@ -27,6 +27,11 @@ export const useOptimisticField = <T, A extends unknown[] = []>(
   firestoreValue: T,
   saveFn: (value: T, ...args: A) => Promise<unknown>,
   errorMsg = 'Failed to save.',
+  // Optional caller-owned gate, ORed with the save-pending gate to hold remote
+  // syncs. For fields whose edits aren't written until blur: a *different* field's
+  // save can settle while a text input is still focused, and that settlement must
+  // not drop the hold and let an echo clobber the in-flight typing.
+  holdRef?: MutableRefObject<boolean>,
 ) => {
   const { addToast } = useToast();
   const addToastRef = useLatest(addToast);
@@ -43,7 +48,7 @@ export const useOptimisticField = <T, A extends unknown[] = []>(
   // can flush a remote value that arrived (and was deferred) mid-save.
   const [, setSaveTick] = useState(0);
 
-  useFirestoreSync(firestoreValue, setValue, pendingRef);
+  useFirestoreSync(firestoreValue, setValue, () => pendingRef.current || !!holdRef?.current);
 
   const save = useCallback((next: T | ((current: T) => T), ...args: A): Promise<void> => {
     // Compute from the freshest committed value via the ref — NOT inside the

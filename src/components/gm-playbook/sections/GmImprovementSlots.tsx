@@ -131,37 +131,31 @@ interface GmImprovementSlotsProps {
 }
 
 export const GmImprovementSlots = ({ gmImprovements, onSave }: GmImprovementSlotsProps) => {
+  // A text field's edits aren't written until blur, so while one is focused remote
+  // echoes must be held back or they'd clobber the in-flight typing. This is a
+  // separate concern from the save-pending gate — a category/completed toggle can
+  // save *while* a title field is still focused — so it's passed to the hook as its
+  // own gate rather than folded into pendingRef.
+  const focusedRef = useRef(false);
+
   const {
     value: localSlots,
     ref: localSlotsRef,
     setValue: setLocalSlots,
     save: saveSlots,
-    pendingRef,
   } = useOptimisticField<GmImprovement[], [removedId?: string]>(
     gmImprovements ?? [],
     (slots, removedId) => onSave({
       gmImprovements: slots,
       ...(removedId ? { removedGmImprovementIds: [removedId] } : {}),
     }),
+    undefined,
+    focusedRef,
   );
-
-  // A text field's edits aren't written until blur, so while one is focused we must
-  // defer remote echoes that would clobber the in-flight typing. This is a separate
-  // concern from the hook's save-pending gate: a category/completed toggle saves
-  // *while* a title field is still focused, and that save's settlement clears the
-  // hook's pendingRef — which would drop the focus gate and let an echo through.
-  // So we keep an independent focusedRef and re-pin pendingRef true whenever it
-  // could have been cleared while a field is still focused. This focus-scoped gate
-  // is the one place that intentionally diverges from the shared pattern.
-  const focusedRef = useRef(false);
-  const holdSyncWhileFocused = useCallback(() => {
-    if (focusedRef.current) pendingRef.current = true;
-  }, [pendingRef]);
 
   const handleSlotFocus = useCallback(() => {
     focusedRef.current = true;
-    pendingRef.current = true;
-  }, [pendingRef]);
+  }, []);
 
   // Optimistic-only update while typing; the write is deferred to blur.
   const handleSlotChange = useCallback((index: number, patch: Partial<GmImprovement>) => {
@@ -173,24 +167,24 @@ export const GmImprovementSlots = ({ gmImprovements, onSave }: GmImprovementSlot
     saveSlots(localSlotsRef.current);
   }, [saveSlots, localSlotsRef]);
 
-  // Category/completed toggles can fire while a title field is still focused; after
-  // their save settles (clearing the hook's pendingRef) re-pin the focus gate.
+  // These can fire while a title field is still focused. The focus gate is held by
+  // focusedRef independently of save settlement, so they need no follow-up re-pin.
   const handleSlotCategoryChange = useCallback((index: number, category: GmImprovement['category']) => {
-    saveSlots((prev) => prev.map((s, i) => i === index ? { ...s, category } : s)).finally(holdSyncWhileFocused);
-  }, [saveSlots, holdSyncWhileFocused]);
+    saveSlots((prev) => prev.map((s, i) => i === index ? { ...s, category } : s));
+  }, [saveSlots]);
 
   const handleSlotCompletedToggle = useCallback((index: number) => {
-    saveSlots((prev) => prev.map((s, i) => i === index ? { ...s, completed: !s.completed } : s)).finally(holdSyncWhileFocused);
-  }, [saveSlots, holdSyncWhileFocused]);
+    saveSlots((prev) => prev.map((s, i) => i === index ? { ...s, completed: !s.completed } : s));
+  }, [saveSlots]);
 
   const handleAdd = useCallback(() => {
-    saveSlots((prev) => [...prev, makeEmptyGmImprovement()]).finally(holdSyncWhileFocused);
-  }, [saveSlots, holdSyncWhileFocused]);
+    saveSlots((prev) => [...prev, makeEmptyGmImprovement()]);
+  }, [saveSlots]);
 
   const handleRemove = useCallback((index: number) => {
     const removedId = localSlotsRef.current[index]?.id;
-    saveSlots((prev) => prev.filter((_, i) => i !== index), removedId).finally(holdSyncWhileFocused);
-  }, [saveSlots, holdSyncWhileFocused, localSlotsRef]);
+    saveSlots((prev) => prev.filter((_, i) => i !== index), removedId);
+  }, [saveSlots, localSlotsRef]);
 
   return (
     <div className={styles.gmSlots}>
