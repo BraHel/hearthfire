@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AddInsertModal } from '../AddInsertModal';
 
-// INSERT_OPTIONS order is ['Revenant', 'Ghost', 'Thrall', 'Followers'].
+// INSERT_TABS order is ['Revenant', 'Ghost', 'Thrall', 'Followers'].
 const noop = () => {};
 
 describe('AddInsertModal', () => {

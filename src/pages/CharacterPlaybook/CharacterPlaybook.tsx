@@ -30,9 +30,12 @@ import { INTRODUCTIONS_OPTIONS } from '@/lib/characterCreation/introductionsOpti
 import { featurePatch, resolvePlaybookFeatures } from '@/lib/resolvePlaybookFeatures';
 import { getMarkedInstinctOverride } from '@/lib/consequenceActions';
 import { useAutoFollowers } from '@/hooks/useAutoFollowers';
-import { useInsertTabs, INSERT_OPTIONS, type InsertOption } from '@/hooks/useInsertTabs';
+import { useInsertTabs } from '@/hooks/useInsertTabs';
+// User-addable inserts (Revenant, Ghost, …) live in one declarative registry — their ids,
+// labels, lazy components and removal cleanup all come from there.
+import { INSERT_TABS, getInsertTab } from '@/lib/insertTabs';
 import { computeInvocationBadge } from '@/hooks/useInvocationBadge';
-// Each playbook's panel + insert components are lazy-loaded so a character page
+// Each playbook's panel + tab components are lazy-loaded so a character page
 // only downloads the active playbook's chunk, not all nine. Lazy calls that
 // import from the same per-playbook barrel share a single Rollup chunk, so e.g.
 // BlessedSacredPouch and BlessedEarthMother land together in the blessed chunk.
@@ -51,10 +54,6 @@ const RangerSomethingWicked = lazy(() => import('@/components/character/playbook
 const RangerAnimalCompanion = lazy(() => import('@/components/character/playbooks/ranger').then((m) => ({ default: m.RangerAnimalCompanion })));
 const SeekerCollection = lazy(() => import('@/components/character/playbooks/seeker').then((m) => ({ default: m.SeekerCollection })));
 const WouldBeHeroFearAnger = lazy(() => import('@/components/character/playbooks/would-be-hero').then((m) => ({ default: m.WouldBeHeroFearAnger })));
-const RevenantInsert = lazy(() => import('@/components/character/playbooks/revenant/RevenantInsert').then((m) => ({ default: m.RevenantInsert })));
-const GhostInsert = lazy(() => import('@/components/character/playbooks/ghost/GhostInsert').then((m) => ({ default: m.GhostInsert })));
-const ThrallInsert = lazy(() => import('@/components/character/playbooks/thrall/ThrallInsert').then((m) => ({ default: m.ThrallInsert })));
-const FollowersInsert = lazy(() => import('@/components/character/playbooks/followers/FollowersInsert').then((m) => ({ default: m.FollowersInsert })));
 import type { Character, CharacterData, GameSession, LoggedRoll, PlaybookType, PlaybookFeatures } from '@/types';
 import type { RollReport } from '@/components/character/Move/RollAffordance';
 import { CharacterRollContext } from '@/components/character/Move/CharacterRollContext';
@@ -114,7 +113,7 @@ const PCPlaybookTab = ({ playbook, data, level, playbookOption, onSave, insertIn
           <Background playbookKey={playbook} options={BACKGROUND_OPTIONS[playbook]} level={level} data={data} onSave={onSave} />
         </>}
         right={<>
-          <RadioSelect playbookKey={playbook} options={INSTINCT_OPTIONS[playbook]} data={data} onSave={onSave} overrideNote={insertInstinctNote} />
+          <RadioSelect playbookKey={playbook} options={INSTINCT_OPTIONS[playbook]} data={data} onSave={onSave} customKey="instinctCustom" overrideNote={insertInstinctNote} />
           <Appearance rows={APPEARANCE_OPTIONS[playbook]} data={data} onSave={onSave} />
           <RadioSelect
             playbookKey={playbook}
@@ -181,21 +180,6 @@ const getPlaybookTabs = (playbook: PlaybookType, data: CharacterData | undefined
   (PLAYBOOK_TAB_CONFIGS[playbook] ?? []).filter(({ when }) => !when || when(data));
 
 
-const resolveStaticTabContent = (
-  id: string,
-  data: CharacterData | undefined,
-  prosperity: number,
-  onSave: (data: Partial<CharacterData>) => Promise<void>,
-): ReactNode => {
-  if (id === 'inventory') return <Inventory data={data} prosperity={prosperity} onSave={onSave} />;
-  if (id === 'Revenant') return lazyTab(<RevenantInsert data={data} onSave={onSave} />);
-  if (id === 'Ghost') return lazyTab(<GhostInsert data={data} onSave={onSave} />);
-  if (id === 'Thrall') return lazyTab(<ThrallInsert data={data} onSave={onSave} />);
-  if (id === 'Followers') return lazyTab(<FollowersInsert data={data} onSave={onSave} />);
-  return null;
-};
-
-
 const CharacterSheet = ({ character, playbookOption, id, gameName, prosperity, nav, updateCharacterName, updateCharacterData, adjustCharacterStats, logRoll }: SheetProps) => {
   const headerRef = useRef<HTMLDivElement>(null);
 
@@ -252,7 +236,7 @@ const CharacterSheet = ({ character, playbookOption, id, gameName, prosperity, n
 
   useAutoFollowers(characterData?.specialPossessions, characterData?.inserts, handleSaveCharacterData);
 
-  const canAddInsert = (characterData?.inserts ?? []).length < INSERT_OPTIONS.length;
+  const canAddInsert = (characterData?.inserts ?? []).length < INSERT_TABS.length;
   const characterName = character.name?.trim();
   const playbookLabel = `${playbookOption.label} Playbook`;
 
@@ -279,23 +263,10 @@ const CharacterSheet = ({ character, playbookOption, id, gameName, prosperity, n
   // Stable ref so useInsertTabs can call setActiveIndex without being a dep of tabs
   const setActiveIndexRef = useRef<(i: number) => void>(() => {});
 
-  const {
-    addTabOpen,
-    removeInsert,
-    removeInsertHandlers,
-    handleOpenAddTab,
-    handleCloseAddTab,
-    handleCloseRemoveInsert,
-    handleConfirmRemoveInsert,
-    handleAddInsert,
-  } = useInsertTabs(
-    character,
-    handleSaveCharacterData,
-    (playbookArg, data) => getPlaybookTabs(playbookArg, data).length,
-    useCallback((i: number) => setActiveIndexRef.current(i), []),
-  );
-
-  const tabs = useMemo(() => [
+  // Every tab that precedes the inserts: the three static tabs plus this playbook's own. Built
+  // separately from `tabs` so useInsertTabs can be handed the count — it needs it before the
+  // insert tabs, which depend on the hook's own remove handlers, can be built.
+  const nonInsertTabs = useMemo(() => [
     {
       id: 'pc-playbook',
       label: 'PC Playbook',
@@ -304,13 +275,13 @@ const CharacterSheet = ({ character, playbookOption, id, gameName, prosperity, n
     {
       id: 'inventory',
       label: 'Inventory',
-      content: resolveStaticTabContent('inventory', characterData, prosperity, handleSaveCharacterData),
+      content: <Inventory data={characterData} prosperity={prosperity} onSave={handleSaveCharacterData} />,
     },
     {
       id: 'arcana',
-      // Rendered directly (not via resolveStaticTabContent) because Arcana alone needs the transactional
-      // stat-adjuster for consequence Armor/HP deltas; the other static tabs only take onSave.
       label: 'Arcana',
+      // Arcana alone needs the transactional stat-adjuster, for the Armor/HP deltas a marked
+      // consequence applies; every other tab here only takes onSave.
       content: lazyTab(<ArcanaTab data={characterData} onSave={handleSaveCharacterData} adjustCharacterStats={handleAdjustCharacterStats} />),
     },
     ...playbookTabs.map(({ id: tabId, label, render }) => ({
@@ -324,16 +295,40 @@ const CharacterSheet = ({ character, playbookOption, id, gameName, prosperity, n
         : undefined,
       content: render(characterData, handleSaveCharacterData, prosperity),
     })),
-    ...(characterData?.inserts ?? []).map((label) => ({
-      id: label,
-      label,
-      content: resolveStaticTabContent(label, characterData, prosperity, handleSaveCharacterData),
-      onRemove: INSERT_OPTIONS.includes(label as InsertOption)
-        ? removeInsertHandlers[label as InsertOption]
-        : undefined,
-      removeTooltip: `Remove ${label}`,
-    })),
-  ], [characterData, playbook, level, playbookOption, handleSaveCharacterData, handleAdjustCharacterStats, insertInstinctNote, playbookTabs, showInvocationsBadge, prosperity, removeInsertHandlers]);
+  ], [characterData, playbook, level, playbookOption, handleSaveCharacterData, handleAdjustCharacterStats, insertInstinctNote, playbookTabs, showInvocationsBadge, prosperity]);
+
+  const {
+    addTabOpen,
+    removeInsert,
+    removeInsertHandlers,
+    handleOpenAddTab,
+    handleCloseAddTab,
+    handleCloseRemoveInsert,
+    handleConfirmRemoveInsert,
+    handleAddInsert,
+  } = useInsertTabs(
+    character,
+    handleSaveCharacterData,
+    nonInsertTabs.length,
+    useCallback((i: number) => setActiveIndexRef.current(i), []),
+  );
+
+  const tabs = useMemo(() => [
+    ...nonInsertTabs,
+    ...(characterData?.inserts ?? []).map((insertId) => {
+      // An id can outlive its definition — a doc may name an insert this build doesn't have — so
+      // fall back to the raw id with an empty, non-removable tab rather than dropping the data.
+      const insert = getInsertTab(insertId);
+      const label = insert?.label ?? insertId;
+      return {
+        id: insertId,
+        label,
+        content: insert ? lazyTab(<insert.Component data={characterData} onSave={handleSaveCharacterData} />) : null,
+        onRemove: insert ? removeInsertHandlers[insert.id] : undefined,
+        removeTooltip: `Remove ${label}`,
+      };
+    }),
+  ], [nonInsertTabs, characterData, handleSaveCharacterData, removeInsertHandlers]);
 
   const { activeIndex, setActiveIndex: setActiveIndexFn, handleActiveChange: hashHandleActiveChange } = useHashTabs(tabs);
   // Mirror the latest tab setter into a ref (written post-commit, not during

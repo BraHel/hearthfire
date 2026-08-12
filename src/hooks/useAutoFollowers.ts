@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { FOLLOWERS_INSERT_ID } from '@/lib/insertTabs';
 import type { CharacterData } from '@/types';
 
 const DOG_POSSESSION_IDS = new Set(['mastiffs', 'hounds', 'good-dog']);
@@ -16,9 +17,9 @@ export const useAutoFollowers = (
     const hasDog = Object.entries(possessions).some(([id, checked]) => checked && DOG_POSSESSION_IDS.has(id));
     if (!hasDog) return;
     const current = inserts ?? [];
-    if (current.includes('Followers')) return;
+    if (current.includes(FOLLOWERS_INSERT_ID)) return;
     hasAutoAddedRef.current = true;
-    onSave({ inserts: [...current, 'Followers'] }).catch(() => {
+    onSave({ inserts: [...current, FOLLOWERS_INSERT_ID] }).catch(() => {
       hasAutoAddedRef.current = false;
     });
   }, [specialPossessions, inserts, onSave]);
