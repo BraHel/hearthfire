@@ -4,11 +4,11 @@ import { PlaybookSection } from '@/components/playbook/PlaybookSection';
 import { Move } from '../../Move';
 import type { MoveDefinition } from '@/types';
 import { PurposeDetail } from './InsertSections';
-import { RadioSelect } from '../../sections/RadioSelect';
+import { OptionSelect } from '../../sections/OptionSelect';
 import { INSERT_INSTINCT_OPTIONS, INSERT_PURPOSE_OPTIONS } from '@/lib/insertSharedData';
 import { useInsertSections } from './useInsertSections';
 import { useConsequenceCheckboxes } from './useConsequenceCheckboxes';
-import type { CharacterData, PlaybookFeatures, PlaybookSectionProps } from '@/types';
+import type { PlaybookFeatures, PlaybookSectionProps } from '@/types';
 import type { RadioOption } from '@/types';
 import styles from './InsertLayout.module.css';
 
@@ -76,12 +76,12 @@ export const InsertLayout = ({
   );
 
   const handleInstinctSave = useCallback(
-    (patch: Partial<CharacterData>) => { saveInstinct(patch.instinct ?? ''); return Promise.resolve(); },
+    (value: string) => { saveInstinct(value); },
     [saveInstinct],
   );
 
   const handlePurposeSave = useCallback(
-    (patch: Partial<CharacterData>) => { savePurpose(patch.instinct ?? ''); return Promise.resolve(); },
+    (value: string) => { savePurpose(value); },
     [savePurpose],
   );
 
@@ -100,12 +100,12 @@ export const InsertLayout = ({
 
   return (
     <div className={styles.root}>
-      <RadioSelect
-        playbookKey={`${playbookName}-instinct`}
+      <OptionSelect
+        name={`${playbookName}-instinct`}
         title="Instinct"
         options={INSTINCT_OPTIONS}
-        data={{ instinct, instinctCustom: '' } as CharacterData}
-        onSave={handleInstinctSave}
+        value={instinct}
+        onChange={handleInstinctSave}
         noCustom
         chooseNote="replaces playbook instinct"
       />
@@ -121,12 +121,12 @@ export const InsertLayout = ({
         </div>
       </PlaybookSection>
 
-      <RadioSelect
-        playbookKey={`${playbookName}-purpose`}
+      <OptionSelect
+        name={`${playbookName}-purpose`}
         title="Terrible Purpose"
         options={purposeOptions}
-        data={{ instinct: purpose, instinctCustom: '' } as CharacterData}
-        onSave={handlePurposeSave}
+        value={purpose}
+        onChange={handlePurposeSave}
         noCustom
       />
 

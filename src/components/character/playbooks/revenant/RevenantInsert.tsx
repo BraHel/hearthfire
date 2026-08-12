@@ -1,10 +1,7 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { InsertLayout } from "../shared/InsertLayout";
-import { RadioSelect } from "../../sections/RadioSelect";
-import type {
-  CharacterData,
-  PlaybookSectionProps,
-} from "@/types";
+import { OptionSelect } from "../../sections/OptionSelect";
+import type { PlaybookSectionProps } from "@/types";
 import { REVENANT_MOVES, REVENANT_CONSEQUENCE_LABELS } from "@/lib/moves/inserts";
 
 const STRANGE_APPETITES_ID = "strange-appetites";
@@ -46,8 +43,7 @@ const StrangeAppetitesPicker = ({
       ?.replace("appetite:", "") ?? "";
 
   const handleSave = useCallback(
-    (patch: Partial<CharacterData>) => {
-      const val = patch.instinct ?? "";
+    (val: string) => {
       updateChecked((prev) => {
         const next: Record<string, boolean> = {};
         for (const [k, v] of Object.entries(prev)) {
@@ -56,23 +52,17 @@ const StrangeAppetitesPicker = ({
         if (val) next[`appetite:${val}`] = true;
         return next;
       });
-      return Promise.resolve();
     },
     [updateChecked],
   );
 
-  const radioData = useMemo(
-    () => ({ instinct: currentPick, instinctCustom: "" }) as CharacterData,
-    [currentPick],
-  );
-
   return (
-    <RadioSelect
-      playbookKey="revenant-appetite"
+    <OptionSelect
+      name="revenant-appetite"
       title="Strange Appetites — Pick 1"
       options={STRANGE_APPETITE_PICKS}
-      data={radioData}
-      onSave={handleSave}
+      value={currentPick}
+      onChange={handleSave}
       noCustom
     />
   );

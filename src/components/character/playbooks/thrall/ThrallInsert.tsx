@@ -3,13 +3,13 @@ import clsx from 'clsx';
 import { Button, Input, Text } from '@/components/ui';
 import { PlaybookSection } from '@/components/playbook/PlaybookSection';
 import { Move } from '../../Move';
-import { RadioSelect } from '../../sections/RadioSelect';
+import { OptionSelect } from '../../sections/OptionSelect';
 import { resolvePlaybookFeatures, featurePatch } from '@/lib/resolvePlaybookFeatures';
 import { useOptimisticField } from '@/hooks/useOptimisticField';
 import { usePlaybookField } from '@/hooks/usePlaybookField';
 import { useCrewSave } from '../shared/useCrewSave';
 import { useTrackedField } from '../shared/useTrackedField';
-import type { CharacterData, MoveDefinition, PlaybookSectionProps } from '@/types';
+import type { MoveDefinition, PlaybookSectionProps } from '@/types';
 import { THRALL_MOVES, THRALL_MARK_DEFINITIONS } from '@/lib/moves/inserts';
 import styles from './ThrallInsert.module.css';
 
@@ -95,21 +95,23 @@ export const ThrallInsert = ({ data, onSave }: ThrallInsertProps) => {
   const { value: thrallImpulse, ref: thrallImpulseRef, setValue: setThrallImpulse, pendingRef: thrallImpulsePendingRef } = usePlaybookField('thrallImpulse', init.thrallImpulse ?? '', saveImmediate, 'Failed to save.');
   const { value: thrallImpulseCustom, ref: thrallImpulseCustomRef, setValue: setThrallImpulseCustom, pendingRef: thrallImpulseCustomPendingRef } = usePlaybookField('thrallImpulseCustom', init.thrallImpulseCustom ?? '', saveImmediate, 'Failed to save.');
 
-  // RadioSelect writes to patch.instinct; remap to thrall-specific Firestore fields.
   const handleInstinctSave = useCallback(
-    (patch: Partial<CharacterData>) => { saveThrallInstinct(patch.instinct ?? ''); return Promise.resolve(); },
+    (value: string) => { saveThrallInstinct(value); },
     [saveThrallInstinct],
   );
 
+  // Impulse and its custom text are two fields written as one atomic save, so
+  // both optimistic values are set (and rolled back) together here rather than
+  // each going through its own field save.
   const handleImpulseSave = useCallback(
-    (patch: Partial<CharacterData>) => {
+    (value: string, customValue: string) => {
       const prevImpulse = thrallImpulseRef.current;
       const prevCustom = thrallImpulseCustomRef.current;
       thrallImpulsePendingRef.current = true;
       thrallImpulseCustomPendingRef.current = true;
-      setThrallImpulse(patch.instinct ?? '');
-      setThrallImpulseCustom(patch.instinctCustom ?? '');
-      return saveImmediate({ thrallImpulse: patch.instinct ?? '', thrallImpulseCustom: patch.instinctCustom ?? '' })
+      setThrallImpulse(value);
+      setThrallImpulseCustom(customValue);
+      return saveImmediate({ thrallImpulse: value, thrallImpulseCustom: customValue })
         .catch(() => { setThrallImpulse(prevImpulse); setThrallImpulseCustom(prevCustom); })
         .finally(() => { thrallImpulsePendingRef.current = false; thrallImpulseCustomPendingRef.current = false; });
     },
@@ -146,22 +148,23 @@ export const ThrallInsert = ({ data, onSave }: ThrallInsertProps) => {
         />
       </PlaybookSection>
 
-      <RadioSelect
-        playbookKey="thrall-instinct"
+      <OptionSelect
+        name="thrall-instinct"
         title="Instinct"
         options={THRALL_INSTINCT_OPTIONS}
-        data={{ instinct: thrallInstinct, instinctCustom: '' } as CharacterData}
-        onSave={handleInstinctSave}
+        value={thrallInstinct}
+        onChange={handleInstinctSave}
         noCustom
         chooseNote="replaces playbook instinct"
       />
 
-      <RadioSelect
-        playbookKey="thrall-impulse"
+      <OptionSelect
+        name="thrall-impulse"
         title="Impulse"
         options={IMPULSE_OPTIONS}
-        data={{ instinct: thrallImpulse, instinctCustom: thrallImpulseCustom } as CharacterData}
-        onSave={handleImpulseSave}
+        value={thrallImpulse}
+        customValue={thrallImpulseCustom}
+        onChange={handleImpulseSave}
         chooseNote="Ask the GM to choose 1, to represent your master's nature and will"
       />
 

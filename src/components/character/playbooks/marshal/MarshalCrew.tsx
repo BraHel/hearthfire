@@ -16,7 +16,7 @@ import {
   resolvePlaybookFeatures,
   featurePatch,
 } from "@/lib/resolvePlaybookFeatures";
-import { RadioSelect } from "../../sections/RadioSelect";
+import { OptionSelect, toCustomSentinel } from "../../sections/OptionSelect";
 import type { RadioOption } from "@/types";
 import {
   BACKGROUND_FORCED_MOVES,
@@ -25,7 +25,7 @@ import {
 import { useCrewSave } from "../shared/useCrewSave";
 import { useTrackedField } from "../shared/useTrackedField";
 import { StatBox, LoyaltyRow, CustomItemsGrid } from "../shared/CrewWidgets";
-import type { CharacterData, PlaybookSectionProps } from "@/types";
+import type { PlaybookSectionProps } from "@/types";
 import styles from "./MarshalCrew.module.css";
 
 const CREW_HP_MAX = 6;
@@ -486,11 +486,11 @@ export const MarshalCrew = ({ data, prosperity, onSave }: MarshalCrewProps) => {
   }, [flushDebounce, addToast]);
 
   const handleCrewInstinctSave = useCallback(
-    (patch: Partial<CharacterData>) => {
+    (value: string, customValue: string) => {
       return onSave(
         featurePatch(data, {
-          crewInstinct: patch.instinct,
-          crewInstinctCustom: patch.instinctCustom,
+          crewInstinct: value,
+          crewInstinctCustom: customValue,
         }),
       );
     },
@@ -498,11 +498,11 @@ export const MarshalCrew = ({ data, prosperity, onSave }: MarshalCrewProps) => {
   );
 
   const handleCrewCostSave = useCallback(
-    (patch: Partial<CharacterData>) => {
+    (value: string, customValue: string) => {
       return onSave(
         featurePatch(data, {
-          crewCost: patch.instinct,
-          crewCostCustom: patch.instinctCustom,
+          crewCost: value,
+          crewCostCustom: customValue,
         }),
       );
     },
@@ -664,34 +664,20 @@ export const MarshalCrew = ({ data, prosperity, onSave }: MarshalCrewProps) => {
       </PlaybookSection>
 
       <div className={styles.columns}>
-        <RadioSelect
-          playbookKey="marshal-crew"
+        <OptionSelect
+          name="marshal-crew"
           options={INSTINCT_OPTIONS}
-          data={
-            {
-              instinct:
-                features.crewInstinct === "custom"
-                  ? "__custom__"
-                  : (features.crewInstinct ?? ""),
-              instinctCustom: features.crewInstinctCustom ?? "",
-            } as CharacterData
-          }
-          onSave={handleCrewInstinctSave}
+          value={toCustomSentinel(features.crewInstinct)}
+          customValue={features.crewInstinctCustom ?? ""}
+          onChange={handleCrewInstinctSave}
         />
-        <RadioSelect
-          playbookKey="marshal-crew-cost"
+        <OptionSelect
+          name="marshal-crew-cost"
           title="Cost"
           options={COST_OPTIONS}
-          data={
-            {
-              instinct:
-                features.crewCost === "custom"
-                  ? "__custom__"
-                  : (features.crewCost ?? ""),
-              instinctCustom: features.crewCostCustom ?? "",
-            } as CharacterData
-          }
-          onSave={handleCrewCostSave}
+          value={toCustomSentinel(features.crewCost)}
+          customValue={features.crewCostCustom ?? ""}
+          onChange={handleCrewCostSave}
           header={
             <LoyaltyRow
               value={loyalty}
