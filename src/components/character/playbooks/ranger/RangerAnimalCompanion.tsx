@@ -6,12 +6,12 @@ import { useCrewSave } from '../shared/useCrewSave';
 import { useTrackedField } from '../shared/useTrackedField';
 import { ANIMAL_TYPES, TypePicksSection } from './AnimalType';
 import { AnimalStats } from './AnimalStats';
-import { RadioSelect } from '../../sections/RadioSelect';
+import { OptionSelect, toCustomSentinel } from '../../sections/OptionSelect';
 import { BeastOfLegend } from './BeastOfLegend';
 import { Text } from '@/components/ui';
 import { LoyaltyRow } from '../shared/CrewWidgets';
 import { useToast } from '@/components/app';
-import type { CharacterData, PlaybookSectionProps, RadioOption } from '@/types';
+import type { PlaybookSectionProps, RadioOption } from '@/types';
 import styles from './RangerAnimalCompanion.module.css';
 
 const ANIMAL_INSTINCT_OPTIONS: RadioOption[] = [
@@ -29,9 +29,6 @@ const ANIMAL_COST_OPTIONS: RadioOption[] = [
   { value: 'Time off on its own, free to roam', label: 'Time off on its own, free to roam', description: '' },
   { value: 'Cozy quarters, comfort, ample food', label: 'Cozy quarters, comfort, ample food', description: '' },
 ];
-
-// Old Firestore records stored 'custom'; RadioSelect requires '__custom__'.
-const toInstinctSentinel = (v: string | undefined) => v === 'custom' ? '__custom__' : (v ?? '');
 
 type RangerAnimalCompanionProps = PlaybookSectionProps;
 
@@ -63,8 +60,7 @@ export const RangerAnimalCompanion = ({ data, onSave }: RangerAnimalCompanionPro
   const { value: loyalty, save: saveLoyalty } = usePlaybookField('animalLoyalty', init.animalLoyalty ?? 0, saveImmediate, 'Failed to save.');
   const { value: beastOfLegend, ref: beastOfLegendRef, save: saveBeastOfLegend } = usePlaybookField('animalBeastOfLegend', init.animalBeastOfLegend ?? {}, saveImmediate, 'Failed to save.');
 
-  const handleTypeSave = useCallback((patch: Partial<CharacterData>) => {
-    const val = patch.instinct ?? '';
+  const handleTypeSave = useCallback((val: string) => {
     const typeConfig = ANIMAL_TYPES.find((t) => t.id === val);
     const prevType = animalTypeRef.current;
     setAnimalType(val);
@@ -86,12 +82,12 @@ export const RangerAnimalCompanion = ({ data, onSave }: RangerAnimalCompanionPro
   const handleTypeCustomChange = useCallback((typeId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const next = { ...typeCustomRef.current, [typeId]: e.target.value };
     setTypeCustom(next);
-    saveDebounced({ animalTypeCustom: next });
-  }, [saveDebounced, setTypeCustom]);
+    saveDebounced({ animalTypeCustom: next }, () => addToast('Failed to save.', 'error'));
+  }, [saveDebounced, setTypeCustom, addToast]);
 
   const handleTypeCustomBlur = useCallback((_typeId: string) => {
-    flushDebounce({ animalTypeCustom: typeCustomRef.current });
-  }, [flushDebounce]);
+    flushDebounce({ animalTypeCustom: typeCustomRef.current }).catch(() => addToast('Failed to save.', 'error'));
+  }, [flushDebounce, addToast]);
 
   const handleTypeCustomCheckedChange = useCallback((typeId: string, checked: boolean) => {
     saveTypeCustomChecked({ ...typeCustomCheckedRef.current, [typeId]: checked });
@@ -105,25 +101,15 @@ export const RangerAnimalCompanion = ({ data, onSave }: RangerAnimalCompanionPro
     saveBeastOfLegend({ ...beastOfLegendRef.current, [id]: checked });
   }, [saveBeastOfLegend]);
 
-  const handleInstinctSave = useCallback((patch: Partial<CharacterData>) => {
-    return onSave(featurePatch(dataRef.current, { animalInstinct: patch.instinct, animalInstinctCustom: patch.instinctCustom }));
+  const handleInstinctSave = useCallback((value: string, customValue: string) => {
+    return onSave(featurePatch(dataRef.current, { animalInstinct: value, animalInstinctCustom: customValue }));
   }, [onSave, dataRef]);
 
-  const handleCostSave = useCallback((patch: Partial<CharacterData>) => {
-    return onSave(featurePatch(dataRef.current, { animalCost: patch.instinct, animalCostCustom: patch.instinctCustom }));
+  const handleCostSave = useCallback((value: string, customValue: string) => {
+    return onSave(featurePatch(dataRef.current, { animalCost: value, animalCostCustom: customValue }));
   }, [onSave, dataRef]);
 
   const features = resolvePlaybookFeatures(data);
-
-  const instinctData = {
-    instinct: toInstinctSentinel(features.animalInstinct),
-    instinctCustom: features.animalInstinctCustom ?? '',
-  } as CharacterData;
-
-  const costData = {
-    instinct: toInstinctSentinel(features.animalCost),
-    instinctCustom: features.animalCostCustom ?? '',
-  } as CharacterData;
 
   const selectedTypeConfig = ANIMAL_TYPES.find((t) => t.id === animalType);
 
@@ -147,8 +133,6 @@ export const RangerAnimalCompanion = ({ data, onSave }: RangerAnimalCompanionPro
       />
     ),
   }));
-
-  const animalTypeData = { instinct: animalType, instinctCustom: '' } as CharacterData;
 
   const loyaltyHeader = (
     <LoyaltyRow
@@ -178,27 +162,29 @@ export const RangerAnimalCompanion = ({ data, onSave }: RangerAnimalCompanionPro
         onDamageTagsChange={handleDamageTagsChange}
         onDamageTagsBlur={handleDamageTagsBlur}
       />
-      <RadioSelect
-        playbookKey="ranger-animal-type"
+      <OptionSelect
+        name="ranger-animal-type"
         title="Type"
         options={animalTypeOptions}
-        data={animalTypeData}
-        onSave={handleTypeSave}
+        value={animalType}
+        onChange={handleTypeSave}
         noCustom
       />
       <div className={styles.columns}>
-        <RadioSelect
-          playbookKey="ranger-animal"
+        <OptionSelect
+          name="ranger-animal"
           options={ANIMAL_INSTINCT_OPTIONS}
-          data={instinctData}
-          onSave={handleInstinctSave}
+          value={toCustomSentinel(features.animalInstinct)}
+          customValue={features.animalInstinctCustom ?? ''}
+          onChange={handleInstinctSave}
         />
-        <RadioSelect
-          playbookKey="ranger-animal-cost"
+        <OptionSelect
+          name="ranger-animal-cost"
           title="Cost"
           options={ANIMAL_COST_OPTIONS}
-          data={costData}
-          onSave={handleCostSave}
+          value={toCustomSentinel(features.animalCost)}
+          customValue={features.animalCostCustom ?? ''}
+          onChange={handleCostSave}
           header={loyaltyHeader}
         />
       </div>
