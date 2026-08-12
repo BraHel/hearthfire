@@ -1,13 +1,25 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { useLatest } from './useLatest';
 import { resolvePlaybookFeatures, featurePatch } from '@/lib/resolvePlaybookFeatures';
+import { useOptimisticField } from './useOptimisticField';
 import { useDebouncedSave } from './useDebouncedSave';
-import { useToast } from '@/components/app';
+import { useFirestoreSync } from './useFirestoreSync';
 import type { CharacterData, PlaybookFeatures } from '@/types';
 
 // Intentionally broad — callers are responsible for passing the right key type.
 // A narrower mapped type resolves to `never` for optional keys in strict mode.
 type FeatureKey = keyof PlaybookFeatures;
+
+const SAVE_ERROR = 'Failed to save. Try again.';
+
+// Frozen module-level defaults, not fresh `{}` literals: the seed value and the
+// synced remote value must be reference-identical when the feature key is absent,
+// or the first sync would re-render with an equal-but-new object every mount.
+const EMPTY_CHECKED: Record<string, boolean> = {};
+const EMPTY_ANSWERS: Record<string, string> = {};
+
+const featureRecord = <T,>(data: CharacterData | undefined, key: FeatureKey, fallback: T): T =>
+  (resolvePlaybookFeatures(data)[key] as T | undefined) ?? fallback;
 
 interface UsePlaybookCheckedReturn {
   checked: Record<string, boolean>;
@@ -20,41 +32,35 @@ interface UsePlaybookCheckedWithAnswersReturn extends UsePlaybookCheckedReturn {
   flushAnswers: () => void;
 }
 
-export const usePlaybookChecked = (
+// The checkbox half, shared by both exported hooks. Delegates the optimistic
+// value, rollback, error toast, and remote-echo gating to useOptimisticField
+// rather than re-implementing them — that hook's useFirestoreSync also *defers*
+// a remote value that lands mid-save and flushes it on settle, where the
+// hand-rolled guard this replaced dropped it outright (#171).
+const useCheckedField = (
   data: CharacterData | undefined,
   onSave: (data: Partial<CharacterData>) => Promise<void>,
   checkedKey: FeatureKey,
 ): UsePlaybookCheckedReturn => {
-  const { addToast } = useToast();
-  // Counter, not a boolean: overlapping saves must each keep the guard raised
-  // until they individually settle, or an early-resolving save would let a
-  // remote echo clobber a still-in-flight optimistic write.
-  const pendingCountRef = useRef(0);
+  const onSaveRef = useLatest(onSave);
+  const dataRef = useLatest(data);
 
-  const [checked, setChecked] = useState<Record<string, boolean>>(
-    () => (resolvePlaybookFeatures(data)[checkedKey] as Record<string, boolean> | undefined) ?? {},
+  const { value: checked, save } = useOptimisticField(
+    featureRecord(data, checkedKey, EMPTY_CHECKED),
+    (next) => onSaveRef.current(featurePatch(dataRef.current, { [checkedKey]: next })),
+    SAVE_ERROR,
   );
 
-  useEffect(() => {
-    if (pendingCountRef.current > 0) return;
-    const val = resolvePlaybookFeatures(data)[checkedKey] as Record<string, boolean> | undefined;
-    // Optimistic store-sync guarded by pendingCountRef; necessary, not derivable.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (val !== undefined) setChecked(val);
-  }, [data, checkedKey]);
-
   const handleChange = useCallback((id: string, value: boolean) => {
-    const prev = checked;
-    const next = { ...checked, [id]: value };
-    pendingCountRef.current += 1;
-    setChecked(next);
-    onSave(featurePatch(data, { [checkedKey]: next }))
-      .catch(() => { setChecked(prev); addToast('Failed to save. Try again.', 'error'); })
-      .finally(() => { pendingCountRef.current -= 1; });
-  }, [checked, onSave, data, checkedKey, addToast]);
+    // Transform form, so the next value is computed from the freshest committed
+    // state — two quick toggles can't clobber each other through a stale closure.
+    save((current) => ({ ...current, [id]: value }));
+  }, [save]);
 
   return { checked, handleChange };
 };
+
+export const usePlaybookChecked = useCheckedField;
 
 export const usePlaybookCheckedWithAnswers = (
   data: CharacterData | undefined,
@@ -62,63 +68,35 @@ export const usePlaybookCheckedWithAnswers = (
   checkedKey: FeatureKey,
   answersKey: FeatureKey,
 ): UsePlaybookCheckedWithAnswersReturn => {
-  const { addToast } = useToast();
-  // Counter, not a boolean — see usePlaybookChecked above.
-  const pendingCountRef = useRef(0);
+  const { checked, handleChange } = useCheckedField(data, onSave, checkedKey);
+  const onSaveRef = useLatest(onSave);
   const dataRef = useLatest(data);
 
-  const [checked, setChecked] = useState<Record<string, boolean>>(
-    () => (resolvePlaybookFeatures(data)[checkedKey] as Record<string, boolean> | undefined) ?? {},
-  );
-
+  // Answers are free text, so they debounce rather than saving per keystroke.
   const [answers, setAnswers] = useState<Record<string, string>>(
-    () => (resolvePlaybookFeatures(data)[answersKey] as Record<string, string> | undefined) ?? {},
+    () => featureRecord(data, answersKey, EMPTY_ANSWERS),
   );
   const answersRef = useLatest(answers);
 
   const saveAnswers = useCallback(
-    (a: Record<string, string>) => onSave(featurePatch(dataRef.current, { [answersKey]: a })),
-    [onSave, answersKey],
+    (a: Record<string, string>) => onSaveRef.current(featurePatch(dataRef.current, { [answersKey]: a })),
+    [answersKey], // eslint-disable-line react-hooks/exhaustive-deps -- onSaveRef/dataRef are stable refs
   );
-  const { onChange: debouncedAnswers, flush: flushAnswers, isPendingRef: answersPendingRef } = useDebouncedSave(saveAnswers);
+  const { onChange: debouncedAnswers, flush, isPendingRef } = useDebouncedSave(saveAnswers);
 
-  useEffect(() => {
-    if (pendingCountRef.current > 0) return;
-    const cv = resolvePlaybookFeatures(data)[checkedKey] as Record<string, boolean> | undefined;
-    // Optimistic store-sync guarded by pendingCountRef; necessary, not derivable.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (cv !== undefined) setChecked(cv);
-  }, [data, checkedKey]);
-
-  useEffect(() => {
-    if (answersPendingRef.current) return;
-    const av = resolvePlaybookFeatures(data)[answersKey] as Record<string, string> | undefined;
-    // Optimistic store-sync guarded by answersPendingRef; necessary, not derivable.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (av !== undefined) setAnswers(av);
-  // Keyed on data + answersKey only; answersPendingRef is a stable ref.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, answersKey]);
+  // Same deferred-flush gate as the checkbox half. useDebouncedSave re-renders on
+  // settle (its isPending state), which is what lets the deferred value flush.
+  useFirestoreSync(featureRecord(data, answersKey, EMPTY_ANSWERS), setAnswers, isPendingRef);
 
   const handleAnswer = useCallback((key: string, value: string) => {
     const next = { ...answersRef.current, [key]: value };
     setAnswers(next);
     debouncedAnswers(next);
-  }, [debouncedAnswers]);
+  }, [debouncedAnswers]); // eslint-disable-line react-hooks/exhaustive-deps -- answersRef is a stable ref
 
   const handleFlushAnswers = useCallback(() => {
-    flushAnswers(answersRef.current);
-  }, [flushAnswers]);
-
-  const handleChange = useCallback((id: string, value: boolean) => {
-    const prev = checked;
-    const next = { ...checked, [id]: value };
-    pendingCountRef.current += 1;
-    setChecked(next);
-    onSave(featurePatch(dataRef.current, { [checkedKey]: next }))
-      .catch(() => { setChecked(prev); addToast('Failed to save. Try again.', 'error'); })
-      .finally(() => { pendingCountRef.current -= 1; });
-  }, [checked, onSave, checkedKey, addToast]);
+    flush(answersRef.current);
+  }, [flush]); // eslint-disable-line react-hooks/exhaustive-deps -- answersRef is a stable ref
 
   return { checked, handleChange, answers, handleAnswer, flushAnswers: handleFlushAnswers };
 };

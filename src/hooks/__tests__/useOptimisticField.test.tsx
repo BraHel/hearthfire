@@ -73,6 +73,30 @@ describe('useOptimisticField', () => {
     expect(saveFn).toHaveBeenCalledWith(2);
   });
 
+  it('holds remote syncs while the caller-owned holdRef is raised', async () => {
+    const saveFn = vi.fn().mockResolvedValue(undefined);
+    const holdRef = { current: false };
+    const { result, rerender } = renderHook(
+      ({ remote }) => useOptimisticField(remote, saveFn, 'failed', holdRef),
+      { initialProps: { remote: 'a' } },
+    );
+
+    // Field focused: edits aren't written until blur, so remote values must wait.
+    holdRef.current = true;
+    rerender({ remote: 'remote-edit' });
+    expect(result.current.value).toBe('a');
+
+    // A *different* field's save settling must NOT drop the hold — this is the case
+    // the old hand-rolled pendingRef pinning in GmImprovementSlots existed to cover.
+    await act(async () => { result.current.save('sibling-save'); });
+    expect(result.current.value).toBe('sibling-save');
+
+    // Blur releases the hold; the deferred remote value then flushes.
+    holdRef.current = false;
+    rerender({ remote: 'remote-edit' });
+    await waitFor(() => expect(result.current.value).toBe('remote-edit'));
+  });
+
   it('forwards extra patch args to saveFn for narrower-than-full writes', async () => {
     const saveFn = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>

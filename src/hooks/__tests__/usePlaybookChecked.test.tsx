@@ -59,6 +59,30 @@ describe('usePlaybookChecked', () => {
 
     await act(async () => { resolveSave(); });
   });
+
+  it('applies a genuinely new remote value that arrived mid-save once the save settles (#171)', async () => {
+    let resolveSave: () => void = () => {};
+    const onSave = vi.fn(() => new Promise<void>((r) => { resolveSave = r; }));
+    // Hoisted so each rerender passes a stable reference; an inline object would
+    // re-fire the sync effect every render.
+    const initial = dataWith({ marshalWarStories: { a: true } });
+    const remote = dataWith({ marshalWarStories: { a: true, z: true } });
+    const { result, rerender } = renderHook(
+      ({ data }) => usePlaybookChecked(data, onSave, 'marshalWarStories'),
+      { initialProps: { data: initial } },
+    );
+
+    act(() => { result.current.handleChange('b', true); });
+    // Another device's edit lands while our own write is still in flight; it must be
+    // deferred (not dropped) rather than clobbering the optimistic value.
+    rerender({ data: remote });
+    expect(result.current.checked).toEqual({ a: true, b: true });
+
+    // Once our write settles the deferred value must actually be applied. Without a
+    // deferred flush it is lost until some unrelated data change re-fires the effect.
+    await act(async () => { resolveSave(); });
+    expect(result.current.checked).toEqual({ a: true, z: true });
+  });
 });
 
 describe('usePlaybookCheckedWithAnswers', () => {
