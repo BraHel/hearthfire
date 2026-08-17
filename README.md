@@ -1,8 +1,10 @@
-# Hearthfire
+# Hearthfire - Fork
 
-A digital companion for [Stonetop](https://www.kickstarter.com/projects/1956101682/stonetop) — the tabletop RPG by Jeremy Strandberg. Hearthfire lets your whole party manage characters, share game state, and reference playbook content in real time, all from the browser.
+A fork of the digital companion for [Stonetop](https://www.kickstarter.com/projects/1956101682/stonetop) — the tabletop RPG by Jeremy Strandberg. Hearthfire lets your whole party manage characters, share game state, and reference playbook content in real time, all from the browser.
 
 **Live:** [hearthfire.camp](https://hearthfire.camp)
+
+The original is found at: https://github.com/gvorbeck/hearthfire
 
 ---
 
